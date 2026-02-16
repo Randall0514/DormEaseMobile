@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary_blue">#96B6E5</color>
+    <color name="dark_blue">#6A9BD8</color>
+    <color name="white">#FFFFFF</color>
+    <color name="light_gray">#F5F5F5</color>
+    <color name="text_gray">#666666</color>
+    <color name="password_requirement_met">#4CAF50</color>
+    <color name="password_requirement_unmet">#7A8FA6</color>
+    <color name="dialog_button_positive">#4A90D9</color>
+    <color name="dialog_button_negative">#7A8FA6</color>
+</resources>
