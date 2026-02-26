@@ -40,6 +40,12 @@
             android:exported="false" /> <!-- Login -->
         <activity
             android:name=".LoginActivity"
+            android:exported="false" /> <!-- Reservation -->
+        <activity
+            android:name=".activity.ReservationActivity"
+            android:exported="false" /> <!-- Dorm Details -->
+        <activity
+            android:name=".activity.DormDetailsActivity"
             android:exported="false" />
     </application>
 

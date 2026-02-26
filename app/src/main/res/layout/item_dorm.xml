@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="4dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Frame for image with border and navigation buttons -->
+        <FrameLayout
+            android:id="@+id/flImageContainer"
+            android:layout_width="0dp"
+            android:layout_height="200dp"
+            android:padding="8dp"
+            android:background="@android:color/white"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageView
+                android:id="@+id/ivDormImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                tools:src="@drawable/dorm_image_placeholder"
+                android:contentDescription="Dorm Image" />
+
+            <!-- Previous Button -->
+            <ImageButton
+                android:id="@+id/btnPrevImage"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/button_background_circle"
+                android:src="@drawable/ic_chevron_left"
+                android:contentDescription="Previous Image"
+                android:padding="8dp" />
+
+            <!-- Next Button -->
+            <ImageButton
+                android:id="@+id/btnNextImage"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="end|center_vertical"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/button_background_circle"
+                android:src="@drawable/ic_chevron_right"
+                android:contentDescription="Next Image"
+                android:padding="8dp" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/llImageIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toTopOf="@+id/clDormInfo"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+            <!-- Indicators will be added programmatically -->
+        </LinearLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/clDormInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            app:layout_constraintTop_toBottomOf="@+id/flImageContainer">
+
+            <!-- Dorm Name -->
+            <TextView
+                android:id="@+id/tvDormName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Salvador's Dorm"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="#000000"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Owner Row -->
+            <ImageView
+                android:id="@+id/ivOwnerIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="8dp"
+                android:src="@drawable/ic_person"
+                android:contentDescription="Owner Icon"
+                app:layout_constraintTop_toBottomOf="@+id/tvDormName"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <TextView
+                android:id="@+id/tvOwnerName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Randall Salvador"
+                android:textColor="#333333"
+                app:layout_constraintTop_toTopOf="@+id/ivOwnerIcon"
+                app:layout_constraintBottom_toBottomOf="@+id/ivOwnerIcon"
+                app:layout_constraintStart_toEndOf="@+id/ivOwnerIcon"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Phone Row (below owner) -->
+            <ImageView
+                android:id="@+id/ivPhoneIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="8dp"
+                android:src="@drawable/ic_phone"
+                android:contentDescription="Phone Icon"
+                app:layout_constraintTop_toBottomOf="@+id/ivOwnerIcon"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <TextView
+                android:id="@+id/tvPhoneNumber"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="+63 9123456789"
+                android:textColor="#333333"
+                app:layout_constraintTop_toTopOf="@+id/ivPhoneIcon"
+                app:layout_constraintBottom_toBottomOf="@+id/ivPhoneIcon"
+                app:layout_constraintStart_toEndOf="@+id/ivPhoneIcon"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Location Row (below phone) -->
+            <ImageView
+                android:id="@+id/ivLocationIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginTop="8dp"
+                android:src="@drawable/ic_location"
+                android:contentDescription="Location Icon"
+                app:layout_constraintTop_toBottomOf="@+id/ivPhoneIcon"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <TextView
+                android:id="@+id/tvLocation"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Dagupan City, Pangasinan"
+                android:textColor="#333333"
+                app:layout_constraintTop_toTopOf="@+id/ivLocationIcon"
+                app:layout_constraintBottom_toBottomOf="@+id/ivLocationIcon"
+                app:layout_constraintStart_toEndOf="@+id/ivLocationIcon"
+                app:layout_constraintEnd_toEndOf="parent" />
+
+            <!-- Price -->
+            <TextView
+                android:id="@+id/tvPrice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="P 3,500/month"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#000000"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@+id/ivLocationIcon"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <!-- Deposit -->
+            <TextView
+                android:id="@+id/tvDeposit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deposit: P3,500"
+                android:textColor="#555555"
+                app:layout_constraintTop_toBottomOf="@+id/tvPrice"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <!-- Advance -->
+            <TextView
+                android:id="@+id/tvAdvance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Advance: P3,500"
+                android:textColor="#555555"
+                app:layout_constraintTop_toBottomOf="@+id/tvDeposit"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <!-- Utilities Label -->
+            <TextView
+                android:id="@+id/tvUtilitiesLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Utilities:"
+                android:textColor="#333333"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@+id/tvAdvance"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <!-- Utilities Checkboxes -->
+            <LinearLayout
+                android:id="@+id/llUtilities"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@+id/tvUtilitiesLabel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <CheckBox
+                    android:id="@+id/cbWater"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Water"
+                    android:textColor="#333333" />
+
+                <CheckBox
+                    android:id="@+id/cbElectricity"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Electricity"
+                    android:textColor="#333333" />
+
+                <CheckBox
+                    android:id="@+id/cbGas"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Gas"
+                    android:textColor="#333333" />
+
+            </LinearLayout>
+
+            <!-- Action Buttons -->
+            <Button
+                android:id="@+id/btnViewDetails"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="View Details"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="8dp"
+                app:layout_constraintTop_toBottomOf="@+id/llUtilities"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/btnReserve" />
+
+            <Button
+                android:id="@+id/btnReserve"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:text="Reserve"
+                android:layout_marginStart="8dp"
+                app:layout_constraintTop_toTopOf="@+id/btnViewDetails"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/btnViewDetails" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

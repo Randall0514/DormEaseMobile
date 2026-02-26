@@ -24,20 +24,17 @@ class LoginActivity : AppCompatActivity() {
 
         sessionManager = SessionManager(this)
 
-        // Hide action bar
         supportActionBar?.hide()
 
         val tilUsername = findViewById<TextInputLayout>(R.id.tilUsername)
         val tilPassword = findViewById<TextInputLayout>(R.id.tilPassword)
-        val etUsername = findViewById<TextInputEditText>(R.id.etUsername)
-        val etPassword = findViewById<TextInputEditText>(R.id.etPassword)
-        val btnLogin = findViewById<Button>(R.id.btnLogin)
-        val tvSignup = findViewById<TextView>(R.id.tvSignup)
+        val etUsername  = findViewById<TextInputEditText>(R.id.etUsername)
+        val etPassword  = findViewById<TextInputEditText>(R.id.etPassword)
+        val btnLogin    = findViewById<Button>(R.id.btnLogin)
+        val tvSignup    = findViewById<TextView>(R.id.tvSignup)
 
-        // Disable error icon for password field to keep the toggle visible
         tilPassword.setErrorIconDrawable(null)
 
-        // Clear errors when user starts typing
         etUsername.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 tilUsername.error = null
@@ -53,16 +50,14 @@ class LoginActivity : AppCompatActivity() {
         }
 
         btnLogin.setOnClickListener {
-            val identifier = etUsername.text.toString().trim() // username or email
-            val password = etPassword.text.toString().trim()
+            val identifier = etUsername.text.toString().trim()
+            val password   = etPassword.text.toString().trim()
 
-            // Clear previous errors
             tilUsername.error = null
             tilPassword.error = null
             tilUsername.isErrorEnabled = false
             tilPassword.isErrorEnabled = false
 
-            // Validation
             var hasError = false
             if (identifier.isEmpty()) {
                 tilUsername.isErrorEnabled = true
@@ -80,20 +75,25 @@ class LoginActivity : AppCompatActivity() {
 
             if (hasError) return@setOnClickListener
 
-            // Create login request
             val request = LoginRequest(
                 identifier = identifier,
-                password = password,
-                platform = "mobile"
+                password   = password,
+                platform   = "mobile"
             )
 
-            // Call backend login API
             RetrofitClient.getApiService(this).login(request).enqueue(object : Callback<ApiResponse> {
                 override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
                     if (response.isSuccessful) {
-                        response.body()?.token?.let { token ->
-                            sessionManager.saveAuthToken(token)
-                        }
+                        val body = response.body()
+
+                        // Backend returns: { message, token, user: { id, fullName, username, email, platform } }
+                        sessionManager.saveUserSession(
+                            token    = body?.token              ?: "",
+                            name     = body?.user?.fullName     ?: identifier,
+                            email    = body?.user?.email        ?: "",
+                            username = body?.user?.username     ?: identifier,
+                            role     = "Tenant"
+                        )
 
                         Toast.makeText(
                             this@LoginActivity,
@@ -101,12 +101,11 @@ class LoginActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
 
-                        // Go to dashboard
                         val intent = Intent(this@LoginActivity, DashboardActivity::class.java)
                         startActivity(intent)
                         finish()
+
                     } else {
-                        // Show error returned from server
                         Toast.makeText(
                             this@LoginActivity,
                             "Login failed: ${response.errorBody()?.string()}",

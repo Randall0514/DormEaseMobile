@@ -2,14 +2,23 @@ package com.firstapp.dormease
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.firstapp.dormease.adapter.DormAdapter
 import com.firstapp.dormease.model.Dorm
+import com.firstapp.dormease.network.RetrofitClient
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class DashboardActivity : AppCompatActivity() {
+
+    private lateinit var rvDorms: RecyclerView
+    private lateinit var dormAdapter: DormAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -17,25 +26,16 @@ class DashboardActivity : AppCompatActivity() {
 
         supportActionBar?.hide()
 
-        val rvDorms = findViewById<RecyclerView>(R.id.rvDorms)
+        // Initialize RecyclerView
+        rvDorms = findViewById(R.id.rvDorms)
         rvDorms.layoutManager = LinearLayoutManager(this)
 
-        val dorms = listOf(
-            Dorm(
-                id = "1",
-                name = "Salvador's Dorm",
-                ownerName = "Randall Salvador",
-                phoneNumber = "+63 9123456789",
-                location = "Dagupan City, Pangasinan",
-                price = 3500.0,
-                deposit = 3500.0,
-                advance = 3500.0,
-                utilities = listOf("Water", "Electricity", "Gas"),
-                imageUrls = listOf("")
-            )
-        )
+        // Initialize adapter with empty list
+        dormAdapter = DormAdapter(emptyList())
+        rvDorms.adapter = dormAdapter
 
-        rvDorms.adapter = DormAdapter(dorms)
+        // Fetch dorms from API
+        fetchAvailableDorms()
 
         // Bottom Navigation
         findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
@@ -49,5 +49,45 @@ class DashboardActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.navProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
         }
+    }
+
+    private fun fetchAvailableDorms() {
+        val apiService = RetrofitClient.getApiService(this)
+
+        apiService.getAvailableDorms().enqueue(object : Callback<List<Dorm>> {
+            override fun onResponse(call: Call<List<Dorm>>, response: Response<List<Dorm>>) {
+                if (response.isSuccessful) {
+                    val dorms = response.body()
+                    if (dorms != null) {
+                        Log.d("DashboardActivity", "Fetched ${dorms.size} dorms")
+                        dormAdapter = DormAdapter(dorms)
+                        rvDorms.adapter = dormAdapter
+                    } else {
+                        Log.w("DashboardActivity", "Response body is null")
+                        Toast.makeText(
+                            this@DashboardActivity,
+                            "No dorms available",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    Log.e("DashboardActivity", "Error: ${response.code()} - ${response.message()}")
+                    Toast.makeText(
+                        this@DashboardActivity,
+                        "Failed to load dorms: ${response.message()}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            override fun onFailure(call: Call<List<Dorm>>, t: Throwable) {
+                Log.e("DashboardActivity", "Network error", t)
+                Toast.makeText(
+                    this@DashboardActivity,
+                    "Network error: ${t.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
     }
 }

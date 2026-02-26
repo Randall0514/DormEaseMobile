@@ -36,64 +36,6 @@
 
             </RelativeLayout>
 
-            <!-- Profile Summary Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="15dp"
-                app:cardElevation="4dp"
-                android:layout_marginBottom="20dp"
-                app:cardBackgroundColor="#C8DCFA">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="16dp"
-                    android:gravity="center_vertical">
-
-                    <!-- Avatar Circle -->
-                    <View
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:background="@drawable/dorm_image_placeholder"/>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="John Doe"
-                            android:textSize="16sp"
-                            android:textColor="#000000"
-                            android:textStyle="bold"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="john.doe@email.com"
-                            android:textSize="13sp"
-                            android:textColor="#555555"
-                            android:layout_marginTop="2dp"/>
-
-                    </LinearLayout>
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:src="@drawable/ic_nav_settings"
-                        android:tint="#555555"
-                        android:contentDescription="Edit profile"/>
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
-
             <!-- Section: Account -->
             <TextView
                 android:layout_width="wrap_content"
@@ -329,7 +271,6 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-
             <!-- Section: Support -->
             <TextView
                 android:layout_width="wrap_content"
@@ -512,6 +453,32 @@
 
         </LinearLayout>
 
+        <!-- Notifications Tab -->
+        <LinearLayout
+            android:id="@+id/navNotifications"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_nav_notifications"
+                android:tint="#B0CCEE"
+                android:contentDescription="Notifications"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Notifications"
+                android:textSize="12sp"
+                android:textColor="#B0CCEE"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
         <!-- Settings Tab (active) -->
         <LinearLayout
             android:id="@+id/navSettings"
@@ -535,32 +502,6 @@
                 android:textSize="12sp"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
-                android:layout_marginTop="4dp"/>
-
-        </LinearLayout>
-
-        <!-- Notifications Tab -->
-        <LinearLayout
-            android:id="@+id/navNotifications"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_notifications"
-                android:tint="#B0CCEE"
-                android:contentDescription="Notifications"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Notifications"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
                 android:layout_marginTop="4dp"/>
 
         </LinearLayout>

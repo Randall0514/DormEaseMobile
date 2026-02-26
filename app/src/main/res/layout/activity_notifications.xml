@@ -57,7 +57,7 @@
                 android:layout_marginBottom="8dp"
                 android:layout_marginStart="4dp"/>
 
-            <!-- Notification 1 - Unread (blue left border) -->
+            <!-- Notification 1 - Unread -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -73,7 +73,6 @@
                     android:padding="14dp"
                     android:gravity="start">
 
-                    <!-- Blue unread dot -->
                     <View
                         android:layout_width="10dp"
                         android:layout_height="10dp"
@@ -82,7 +81,6 @@
                         android:layout_marginEnd="10dp"
                         android:layout_marginStart="0dp"/>
 
-                    <!-- Content -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -190,7 +188,7 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Notification 3 - Read (white bg, no dot) -->
+            <!-- Notification 3 - Read -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -206,7 +204,6 @@
                     android:padding="14dp"
                     android:gravity="start">
 
-                    <!-- Spacer where dot would be -->
                     <View
                         android:layout_width="10dp"
                         android:layout_height="10dp"
@@ -434,32 +431,6 @@
 
         </LinearLayout>
 
-        <!-- Settings Tab -->
-        <LinearLayout
-            android:id="@+id/navSettings"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_settings"
-                android:tint="#B0CCEE"
-                android:contentDescription="Settings"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Settings"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
-                android:layout_marginTop="4dp"/>
-
-        </LinearLayout>
-
         <!-- Notifications Tab (active) -->
         <LinearLayout
             android:id="@+id/navNotifications"
@@ -483,6 +454,32 @@
                 android:textSize="12sp"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+        <!-- Settings Tab -->
+        <LinearLayout
+            android:id="@+id/navSettings"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_nav_settings"
+                android:tint="#B0CCEE"
+                android:contentDescription="Settings"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Settings"
+                android:textSize="12sp"
+                android:textColor="#B0CCEE"
                 android:layout_marginTop="4dp"/>
 
         </LinearLayout>

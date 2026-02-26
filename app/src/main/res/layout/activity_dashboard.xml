@@ -85,32 +85,6 @@
 
         </LinearLayout>
 
-        <!-- Settings Tab -->
-        <LinearLayout
-            android:id="@+id/navSettings"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_settings"
-                android:tint="#B0CCEE"
-                android:contentDescription="Settings"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Settings"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
-                android:layout_marginTop="4dp"/>
-
-        </LinearLayout>
-
         <!-- Notifications Tab -->
         <LinearLayout
             android:id="@+id/navNotifications"
@@ -131,6 +105,32 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Messages"
+                android:textSize="12sp"
+                android:textColor="#B0CCEE"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
+        <!-- Settings Tab -->
+        <LinearLayout
+            android:id="@+id/navSettings"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_nav_settings"
+                android:tint="#B0CCEE"
+                android:contentDescription="Settings"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Settings"
                 android:textSize="12sp"
                 android:textColor="#B0CCEE"
                 android:layout_marginTop="4dp"/>
