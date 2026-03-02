@@ -3,6 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -14,12 +18,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DormEase"
         android:usesCleartextTraffic="true">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -30,23 +34,29 @@
             android:name=".NotificationsActivity"
             android:exported="false" />
         <activity
+            android:name=".MessagesActivity"
+            android:exported="false" />
+        <activity
             android:name=".SettingsActivity"
-            android:exported="false" /> <!-- Dashboard -->
+            android:exported="false" />
         <activity
             android:name=".DashboardActivity"
-            android:exported="false" /> <!-- Signup -->
+            android:exported="false" />
         <activity
             android:name=".SignupActivity"
-            android:exported="false" /> <!-- Login -->
+            android:exported="false" />
         <activity
             android:name=".LoginActivity"
-            android:exported="false" /> <!-- Reservation -->
+            android:exported="false" />
         <activity
             android:name=".activity.ReservationActivity"
-            android:exported="false" /> <!-- Dorm Details -->
+            android:exported="false" />
         <activity
             android:name=".activity.DormDetailsActivity"
             android:exported="false" />
+
+
+
     </application>
 
 </manifest>

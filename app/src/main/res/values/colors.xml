@@ -9,4 +9,12 @@
     <color name="password_requirement_unmet">#7A8FA6</color>
     <color name="dialog_button_positive">#4A90D9</color>
     <color name="dialog_button_negative">#7A8FA6</color>
+
+    <!-- Notification colors -->
+    <color name="unread_bg">#EEF4FD</color>
+    <color name="badge_approved_text">#1E9650</color>
+    <color name="badge_pending_text">#C88000</color>
+    <color name="badge_rejected_text">#D93025</color>
+    <color name="badge_info_text">#3578C5</color>
+
 </resources>

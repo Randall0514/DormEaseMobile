@@ -20,26 +20,33 @@ import com.firstapp.dormease.model.Dorm
 class DormAdapter(private val dorms: List<Dorm>) :
     RecyclerView.Adapter<DormAdapter.DormViewHolder>() {
 
-    private val BASE_URL = "http://192.168.68.125:3000"
+    private val BASE_URL = "http://192.168.68.102:3000"
     private val currentImageIndex = mutableMapOf<Int, Int>()
 
     inner class DormViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val ivDormImage: ImageView = itemView.findViewById(R.id.ivDormImage)
+        val ivDormImage: ImageView         = itemView.findViewById(R.id.ivDormImage)
         val llImageIndicator: LinearLayout = itemView.findViewById(R.id.llImageIndicator)
-        val btnPrevImage: ImageButton = itemView.findViewById(R.id.btnPrevImage)
-        val btnNextImage: ImageButton = itemView.findViewById(R.id.btnNextImage)
-        val tvDormName: TextView = itemView.findViewById(R.id.tvDormName)
-        val tvOwnerName: TextView = itemView.findViewById(R.id.tvOwnerName)
-        val tvPhoneNumber: TextView = itemView.findViewById(R.id.tvPhoneNumber)
-        val tvLocation: TextView = itemView.findViewById(R.id.tvLocation)
-        val tvPrice: TextView = itemView.findViewById(R.id.tvPrice)
-        val tvDeposit: TextView = itemView.findViewById(R.id.tvDeposit)
-        val tvAdvance: TextView = itemView.findViewById(R.id.tvAdvance)
-        val cbWater: CheckBox = itemView.findViewById(R.id.cbWater)
-        val cbElectricity: CheckBox = itemView.findViewById(R.id.cbElectricity)
-        val cbGas: CheckBox = itemView.findViewById(R.id.cbGas)
-        val btnViewDetails: Button = itemView.findViewById(R.id.btnViewDetails)
-        val btnReserve: Button = itemView.findViewById(R.id.btnReserve)
+        val btnPrevImage: ImageButton      = itemView.findViewById(R.id.btnPrevImage)
+        val btnNextImage: ImageButton      = itemView.findViewById(R.id.btnNextImage)
+        val tvDormName: TextView           = itemView.findViewById(R.id.tvDormName)
+        val tvOwnerName: TextView          = itemView.findViewById(R.id.tvOwnerName)
+        val tvPhoneNumber: TextView        = itemView.findViewById(R.id.tvPhoneNumber)
+        val tvLocation: TextView           = itemView.findViewById(R.id.tvLocation)
+        val tvPrice: TextView              = itemView.findViewById(R.id.tvPrice)
+        val tvDeposit: TextView            = itemView.findViewById(R.id.tvDeposit)
+        val tvAdvance: TextView            = itemView.findViewById(R.id.tvAdvance)
+        val btnViewDetails: Button         = itemView.findViewById(R.id.btnViewDetails)
+        val btnReserve: Button             = itemView.findViewById(R.id.btnReserve)
+        // Utilities
+        val cbWater: CheckBox              = itemView.findViewById(R.id.cbWater)
+        val cbElectricity: CheckBox        = itemView.findViewById(R.id.cbElectricity)
+        val cbWifi: CheckBox               = itemView.findViewById(R.id.cbWifi)
+        val cbBedFrame: CheckBox           = itemView.findViewById(R.id.cbBedFrame)
+        val cbFoam: CheckBox               = itemView.findViewById(R.id.cbFoam)
+        val cbKitchen: CheckBox            = itemView.findViewById(R.id.cbKitchen)
+        val cbRestroom: CheckBox           = itemView.findViewById(R.id.cbRestroom)
+        val cbNoCurfew: CheckBox           = itemView.findViewById(R.id.cbNoCurfew)
+        val cbVisitors: CheckBox           = itemView.findViewById(R.id.cbVisitors)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DormViewHolder {
@@ -63,20 +70,33 @@ class DormAdapter(private val dorms: List<Dorm>) :
         holder.tvDeposit.text     = "Deposit: ₱${dorm.deposit ?: "N/A"}"
         holder.tvAdvance.text     = "Advance: ₱${dorm.advance ?: "N/A"}"
 
-        holder.cbWater.isChecked       = dorm.utilities.contains("water")
-        holder.cbElectricity.isChecked = dorm.utilities.contains("electricity")
-        holder.cbGas.isChecked         = dorm.utilities.contains("gas")
-        holder.cbWater.isEnabled       = false
-        holder.cbElectricity.isEnabled = false
-        holder.cbGas.isEnabled         = false
+        // ── Utilities ────────────────────────────────────────────────────────
+        val u = dorm.utilities
+        holder.cbWater.isChecked       = u.contains("water")
+        holder.cbElectricity.isChecked = u.contains("electricity")
+        holder.cbWifi.isChecked        = u.contains("wifi")
+        holder.cbBedFrame.isChecked    = u.contains("bedFrame")
+        holder.cbFoam.isChecked        = u.contains("foam")
+        holder.cbKitchen.isChecked     = u.contains("kitchen")
+        holder.cbRestroom.isChecked    = u.contains("restroom")
+        holder.cbNoCurfew.isChecked    = u.contains("noCurfew")
+        holder.cbVisitors.isChecked    = u.contains("visitorsAllowed")
 
-        // Load images
+        listOf(
+            holder.cbWater, holder.cbElectricity, holder.cbWifi,
+            holder.cbBedFrame, holder.cbFoam, holder.cbKitchen,
+            holder.cbRestroom, holder.cbNoCurfew, holder.cbVisitors
+        ).forEach { it.isEnabled = false }
+
+        // ── Images ───────────────────────────────────────────────────────────
         if (!dorm.photoUrls.isNullOrEmpty()) {
             val currentIndex = currentImageIndex[position] ?: 0
             loadImage(holder, dorm.photoUrls, currentIndex)
             updateIndicators(holder, dorm.photoUrls.size, currentIndex)
-            holder.btnPrevImage.visibility = if (currentIndex > 0) View.VISIBLE else View.INVISIBLE
-            holder.btnNextImage.visibility = if (currentIndex < dorm.photoUrls.size - 1) View.VISIBLE else View.INVISIBLE
+            holder.btnPrevImage.visibility =
+                if (currentIndex > 0) View.VISIBLE else View.INVISIBLE
+            holder.btnNextImage.visibility =
+                if (currentIndex < dorm.photoUrls.size - 1) View.VISIBLE else View.INVISIBLE
 
             holder.btnPrevImage.setOnClickListener {
                 val newIndex = (currentIndex - 1).coerceAtLeast(0)
@@ -94,35 +114,35 @@ class DormAdapter(private val dorms: List<Dorm>) :
             holder.ivDormImage.setImageResource(R.drawable.dorm_image_placeholder)
         }
 
-        // View Details button — also pass ownerId
+        // ── View Details ─────────────────────────────────────────────────────
         holder.btnViewDetails.setOnClickListener {
             val context = holder.itemView.context
             val intent = Intent(context, DormDetailsActivity::class.java).apply {
-                putExtra("DORM_NAME", dorm.dormName)
-                putExtra("DORM_OWNER", dorm.ownerName ?: "Unknown Owner")
-                putExtra("DORM_OWNER_ID", dorm.ownerId ?: 0)   // ← pass owner id
-                putExtra("DORM_PHONE", dorm.phone)
-                putExtra("DORM_LOCATION", dorm.address)
-                putExtra("DORM_PRICE", dorm.price.toString())
-                putExtra("DORM_DEPOSIT", dorm.deposit?.toString() ?: "0")
-                putExtra("DORM_ADVANCE", dorm.advance?.toString() ?: "0")
+                putExtra("DORM_NAME",       dorm.dormName)
+                putExtra("DORM_OWNER",      dorm.ownerName ?: "Unknown Owner")
+                putExtra("DORM_OWNER_ID",   dorm.ownerId ?: 0)
+                putExtra("DORM_PHONE",      dorm.phone)
+                putExtra("DORM_LOCATION",   dorm.address)
+                putExtra("DORM_PRICE",      dorm.price.toString())
+                putExtra("DORM_DEPOSIT",    dorm.deposit?.toString() ?: "0")
+                putExtra("DORM_ADVANCE",    dorm.advance?.toString() ?: "0")
                 putExtra("DORM_ROOMS_LEFT", dorm.roomCapacity)
-                putStringArrayListExtra("DORM_UTILITIES", ArrayList(dorm.utilities))
+                putStringArrayListExtra("DORM_UTILITIES",  ArrayList(dorm.utilities))
                 putStringArrayListExtra("DORM_PHOTO_URLS", ArrayList(dorm.photoUrls ?: emptyList()))
             }
             context.startActivity(intent)
         }
 
-        // Reserve button — pass ownerId so reservation is linked to correct admin
+        // ── Reserve ──────────────────────────────────────────────────────────
         holder.btnReserve.setOnClickListener {
             val context = holder.itemView.context
             val intent = Intent(context, ReservationActivity::class.java).apply {
-                putExtra("DORM_NAME", dorm.dormName)
-                putExtra("DORM_OWNER_ID", dorm.ownerId ?: 0)   // ← key fix: links to correct admin
-                putExtra("DORM_LOCATION", dorm.address)
-                putExtra("DORM_PRICE", dorm.price.toString())
-                putExtra("DORM_DEPOSIT", dorm.deposit?.toString() ?: "0")
-                putExtra("DORM_ADVANCE", dorm.advance?.toString() ?: "0")
+                putExtra("DORM_NAME",      dorm.dormName)
+                putExtra("DORM_OWNER_ID",  dorm.ownerId ?: 0)
+                putExtra("DORM_LOCATION",  dorm.address)
+                putExtra("DORM_PRICE",     dorm.price.toString())
+                putExtra("DORM_DEPOSIT",   dorm.deposit?.toString() ?: "0")
+                putExtra("DORM_ADVANCE",   dorm.advance?.toString() ?: "0")
             }
             context.startActivity(intent)
         }
@@ -146,7 +166,8 @@ class DormAdapter(private val dorms: List<Dorm>) :
             params.setMargins(4.dpToPx(holder.itemView.context), 0, 4.dpToPx(holder.itemView.context), 0)
             indicator.layoutParams = params
             indicator.setBackgroundResource(
-                if (i == currentIndex) R.drawable.indicator_active else R.drawable.indicator_inactive
+                if (i == currentIndex) R.drawable.indicator_active
+                else R.drawable.indicator_inactive
             )
             holder.llImageIndicator.addView(indicator)
         }
@@ -154,7 +175,6 @@ class DormAdapter(private val dorms: List<Dorm>) :
 
     override fun getItemCount(): Int = dorms.size
 
-    private fun Int.dpToPx(context: android.content.Context): Int {
-        return (this * context.resources.displayMetrics.density).toInt()
-    }
+    private fun Int.dpToPx(context: android.content.Context): Int =
+        (this * context.resources.displayMetrics.density).toInt()
 }

@@ -15,7 +15,7 @@ import com.firstapp.dormease.R
 
 class DormDetailsActivity : AppCompatActivity() {
 
-    private val BASE_URL = "http://192.168.68.125:3000"
+    private val BASE_URL = "http://192.168.68.102:3000"
     private var photoUrls: ArrayList<String> = arrayListOf()
     private var currentImageIndex = 0
 
@@ -23,19 +23,19 @@ class DormDetailsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dorm_details)
 
-        // Retrieve data from Intent
-        val dormName     = intent.getStringExtra("DORM_NAME") ?: "N/A"
-        val ownerName    = intent.getStringExtra("DORM_OWNER") ?: "N/A"
-        val phone        = intent.getStringExtra("DORM_PHONE") ?: "N/A"
-        val location     = intent.getStringExtra("DORM_LOCATION") ?: "N/A"
-        val price        = intent.getStringExtra("DORM_PRICE") ?: "N/A"
-        val deposit      = intent.getStringExtra("DORM_DEPOSIT") ?: "N/A"
-        val advance      = intent.getStringExtra("DORM_ADVANCE") ?: "N/A"
-        val roomsLeft    = intent.getIntExtra("DORM_ROOMS_LEFT", 0)
-        val utilities    = intent.getStringArrayListExtra("DORM_UTILITIES") ?: arrayListOf()
-        photoUrls        = intent.getStringArrayListExtra("DORM_PHOTO_URLS") ?: arrayListOf()
+        // ── Intent data ──────────────────────────────────────────────────────
+        val dormName  = intent.getStringExtra("DORM_NAME")     ?: "N/A"
+        val ownerName = intent.getStringExtra("DORM_OWNER")    ?: "N/A"
+        val phone     = intent.getStringExtra("DORM_PHONE")    ?: "N/A"
+        val location  = intent.getStringExtra("DORM_LOCATION") ?: "N/A"
+        val price     = intent.getStringExtra("DORM_PRICE")    ?: "N/A"
+        val deposit   = intent.getStringExtra("DORM_DEPOSIT")  ?: "N/A"
+        val advance   = intent.getStringExtra("DORM_ADVANCE")  ?: "N/A"
+        val roomsLeft = intent.getIntExtra("DORM_ROOMS_LEFT", 0)
+        val utilities = intent.getStringArrayListExtra("DORM_UTILITIES") ?: arrayListOf()
+        photoUrls     = intent.getStringArrayListExtra("DORM_PHOTO_URLS") ?: arrayListOf()
 
-        // Bind views
+        // ── Views ────────────────────────────────────────────────────────────
         val btnBack       = findViewById<ImageButton>(R.id.btnBack)
         val ivDormImage   = findViewById<ImageView>(R.id.ivDormImage)
         val btnPrevImage  = findViewById<ImageButton>(R.id.btnPrevImage)
@@ -49,13 +49,21 @@ class DormDetailsActivity : AppCompatActivity() {
         val tvDeposit     = findViewById<TextView>(R.id.tvDeposit)
         val tvAdvance     = findViewById<TextView>(R.id.tvAdvance)
         val tvRoomsLeft   = findViewById<TextView>(R.id.tvRoomsLeft)
-        val cbWater       = findViewById<CheckBox>(R.id.cbWater)
-        val cbElectricity = findViewById<CheckBox>(R.id.cbElectricity)
-        val cbGas         = findViewById<CheckBox>(R.id.cbGas)
         val btnMessage    = findViewById<MaterialButton>(R.id.btnMessage)
         val btnReserve    = findViewById<MaterialButton>(R.id.btnReserve)
 
-        // Populate data
+        // Utilities
+        val cbWater       = findViewById<CheckBox>(R.id.cbWater)
+        val cbElectricity = findViewById<CheckBox>(R.id.cbElectricity)
+        val cbWifi        = findViewById<CheckBox>(R.id.cbWifi)
+        val cbBedFrame    = findViewById<CheckBox>(R.id.cbBedFrame)
+        val cbFoam        = findViewById<CheckBox>(R.id.cbFoam)
+        val cbKitchen     = findViewById<CheckBox>(R.id.cbKitchen)
+        val cbRestroom    = findViewById<CheckBox>(R.id.cbRestroom)
+        val cbNoCurfew    = findViewById<CheckBox>(R.id.cbNoCurfew)
+        val cbVisitors    = findViewById<CheckBox>(R.id.cbVisitors)
+
+        // ── Populate ─────────────────────────────────────────────────────────
         tvDormName.text    = dormName
         tvOwnerName.text   = ownerName
         tvPhoneNumber.text = "+63 $phone"
@@ -65,11 +73,22 @@ class DormDetailsActivity : AppCompatActivity() {
         tvAdvance.text     = "Advance: ₱$advance"
         tvRoomsLeft.text   = "$roomsLeft Rooms Capacity"
 
+        // ── Utilities ────────────────────────────────────────────────────────
         cbWater.isChecked       = utilities.contains("water")
         cbElectricity.isChecked = utilities.contains("electricity")
-        cbGas.isChecked         = utilities.contains("gas")
+        cbWifi.isChecked        = utilities.contains("wifi")
+        cbBedFrame.isChecked    = utilities.contains("bedFrame")
+        cbFoam.isChecked        = utilities.contains("foam")
+        cbKitchen.isChecked     = utilities.contains("kitchen")
+        cbRestroom.isChecked    = utilities.contains("restroom")
+        cbNoCurfew.isChecked    = utilities.contains("noCurfew")
+        cbVisitors.isChecked    = utilities.contains("visitorsAllowed")
 
-        // Load images
+        listOf(cbWater, cbElectricity, cbWifi, cbBedFrame, cbFoam,
+            cbKitchen, cbRestroom, cbNoCurfew, cbVisitors)
+            .forEach { it.isEnabled = false }
+
+        // ── Images ───────────────────────────────────────────────────────────
         if (photoUrls.isNotEmpty()) {
             loadImage(ivDormImage, photoUrls[currentImageIndex])
             updateIndicators(llIndicator, photoUrls.size, currentImageIndex)
@@ -83,7 +102,6 @@ class DormDetailsActivity : AppCompatActivity() {
                     updateNavButtons(btnPrevImage, btnNextImage)
                 }
             }
-
             btnNextImage.setOnClickListener {
                 if (currentImageIndex < photoUrls.size - 1) {
                     currentImageIndex++
@@ -98,22 +116,17 @@ class DormDetailsActivity : AppCompatActivity() {
             ivDormImage.setImageResource(R.drawable.dorm_image_placeholder)
         }
 
-        // Back button
-        btnBack.setOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
+        // ── Back ─────────────────────────────────────────────────────────────
+        btnBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
-        // Message button — static, no action
-        // btnMessage is display only
-
-        // Reserve button — navigate to ReservationActivity
+        // ── Reserve ──────────────────────────────────────────────────────────
         btnReserve.setOnClickListener {
             val intent = Intent(this, ReservationActivity::class.java).apply {
-                putExtra("DORM_NAME", dormName)
+                putExtra("DORM_NAME",     dormName)
                 putExtra("DORM_LOCATION", location)
-                putExtra("DORM_PRICE", price)
-                putExtra("DORM_DEPOSIT", deposit)
-                putExtra("DORM_ADVANCE", advance)
+                putExtra("DORM_PRICE",    price)
+                putExtra("DORM_DEPOSIT",  deposit)
+                putExtra("DORM_ADVANCE",  advance)
             }
             startActivity(intent)
         }
@@ -130,7 +143,8 @@ class DormDetailsActivity : AppCompatActivity() {
 
     private fun updateNavButtons(btnPrev: ImageButton, btnNext: ImageButton) {
         btnPrev.visibility = if (currentImageIndex > 0) View.VISIBLE else View.INVISIBLE
-        btnNext.visibility = if (currentImageIndex < photoUrls.size - 1) View.VISIBLE else View.INVISIBLE
+        btnNext.visibility =
+            if (currentImageIndex < photoUrls.size - 1) View.VISIBLE else View.INVISIBLE
     }
 
     private fun updateIndicators(container: LinearLayout, total: Int, current: Int) {
@@ -142,7 +156,8 @@ class DormDetailsActivity : AppCompatActivity() {
             params.setMargins(4, 0, 4, 0)
             dot.layoutParams = params
             dot.setBackgroundResource(
-                if (i == current) R.drawable.indicator_active else R.drawable.indicator_inactive
+                if (i == current) R.drawable.indicator_active
+                else R.drawable.indicator_inactive
             )
             container.addView(dot)
         }

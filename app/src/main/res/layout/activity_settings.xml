@@ -47,7 +47,6 @@
                 android:layout_marginBottom="8dp"
                 android:layout_marginStart="4dp"/>
 
-            <!-- Edit Profile Row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -90,7 +89,6 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Change Password Row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -133,7 +131,6 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Change Email Row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -187,7 +184,6 @@
                 android:layout_marginBottom="8dp"
                 android:layout_marginStart="4dp"/>
 
-            <!-- Notifications Toggle Row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -229,13 +225,12 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Dark Mode Toggle Row -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="12dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="6dp"
+                android:layout_marginBottom="16dp"
                 app:cardBackgroundColor="#FFFFFF">
 
                 <LinearLayout
@@ -282,7 +277,6 @@
                 android:layout_marginBottom="8dp"
                 android:layout_marginStart="4dp"/>
 
-            <!-- Help Center -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -325,7 +319,6 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Contact Us -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -368,7 +361,6 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- About App -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -427,7 +419,6 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
-        <!-- Home Tab -->
         <LinearLayout
             android:id="@+id/navHome"
             android:layout_width="0dp"
@@ -453,9 +444,8 @@
 
         </LinearLayout>
 
-        <!-- Notifications Tab -->
         <LinearLayout
-            android:id="@+id/navNotifications"
+            android:id="@+id/navMessages"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -467,19 +457,19 @@
                 android:layout_height="28dp"
                 android:src="@drawable/ic_nav_notifications"
                 android:tint="#B0CCEE"
-                android:contentDescription="Notifications"/>
+                android:contentDescription="Messages"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Notifications"
+                android:text="Messages"
                 android:textSize="12sp"
                 android:textColor="#B0CCEE"
                 android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
-        <!-- Settings Tab (active) -->
+        <!-- Settings Tab (Active) -->
         <LinearLayout
             android:id="@+id/navSettings"
             android:layout_width="0dp"
@@ -506,7 +496,6 @@
 
         </LinearLayout>
 
-        <!-- Profile Tab -->
         <LinearLayout
             android:id="@+id/navProfile"
             android:layout_width="0dp"

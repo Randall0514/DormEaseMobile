@@ -5,11 +5,11 @@ import android.os.Bundle
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 
-class SettingsActivity : AppCompatActivity() {
+class MessagesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings)
+        setContentView(R.layout.activity_messages)
 
         supportActionBar?.hide()
 
@@ -19,12 +19,12 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
 
-        findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
-            startActivity(Intent(this, MessagesActivity::class.java))
+        // navMessages is current page, no action needed
+
+        findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
             finish()
         }
-
-        // navSettings is current page, no action needed
 
         findViewById<LinearLayout>(R.id.navProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))

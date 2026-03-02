@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/gradient_background">
 
-    <!-- Header with Home text -->
+    <!-- Header -->
     <RelativeLayout
         android:id="@+id/headerLayout"
         android:layout_width="match_parent"
@@ -24,6 +24,42 @@
             android:textColor="@android:color/white"
             android:textSize="24sp"
             android:textStyle="bold" />
+
+        <!-- Notification Bell Icon (top right) -->
+        <FrameLayout
+            android:id="@+id/notificationBellContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="2dp"
+            android:layout_alignTop="@+id/tvHome"
+            android:layout_alignBottom="@+id/tvHome">
+
+            <ImageView
+                android:id="@+id/ivNotificationBell"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:layout_marginTop="5dp"
+                android:src="@drawable/ic_nav_notifications"
+                android:tint="@android:color/white"
+                android:contentDescription="Notifications"
+                android:padding="1dp"/>
+
+            <TextView
+                android:id="@+id/tvNotificationBadge"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/badge_background"
+                android:text="2"
+                android:textColor="@android:color/white"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:visibility="gone"/>
+
+        </FrameLayout>
 
         <TextView
             android:id="@+id/tvAvailableDorms"
@@ -85,9 +121,9 @@
 
         </LinearLayout>
 
-        <!-- Notifications Tab -->
+        <!-- Messages Tab -->
         <LinearLayout
-            android:id="@+id/navNotifications"
+            android:id="@+id/navMessages"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -97,9 +133,9 @@
             <ImageView
                 android:layout_width="28dp"
                 android:layout_height="28dp"
-                android:src="@drawable/ic_nav_notifications"
+                android:src="@drawable/ic_nav_messages"
                 android:tint="#B0CCEE"
-                android:contentDescription="Notifications"/>
+                android:contentDescription="Messages"/>
 
             <TextView
                 android:layout_width="wrap_content"

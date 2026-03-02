@@ -29,14 +29,13 @@ class ProfileActivity : AppCompatActivity() {
         val username = session.getUsername()
         val role     = session.getRole()
 
-        // Avatar initial — first letter of name, uppercase
         val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
-        findViewById<TextView>(R.id.tvAvatarInitial).text  = initial
-        findViewById<TextView>(R.id.tvProfileName).text    = name
-        findViewById<TextView>(R.id.tvProfileEmail).text   = email
+        findViewById<TextView>(R.id.tvAvatarInitial).text   = initial
+        findViewById<TextView>(R.id.tvProfileName).text     = name
+        findViewById<TextView>(R.id.tvProfileEmail).text    = email
         findViewById<TextView>(R.id.tvProfileUsername).text = username
-        findViewById<TextView>(R.id.tvProfileRole).text    = role
+        findViewById<TextView>(R.id.tvProfileRole).text     = role
     }
 
     private fun setupClickListeners() {
@@ -46,15 +45,17 @@ class ProfileActivity : AppCompatActivity() {
             finish()
         }
 
+        findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
+            startActivity(Intent(this, MessagesActivity::class.java))
+            finish()
+        }
+
         findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
             finish()
         }
 
-        findViewById<LinearLayout>(R.id.navNotifications).setOnClickListener {
-            startActivity(Intent(this, NotificationsActivity::class.java))
-            finish()
-        }
+        // navProfile is current page, no action needed
 
         // Menu Cards
         findViewById<androidx.cardview.widget.CardView>(R.id.btnPersonalInfo).setOnClickListener {

@@ -34,7 +34,6 @@
                     android:orientation="vertical"
                     android:padding="20dp">
 
-                    <!-- Avatar Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -96,7 +95,6 @@
                         android:background="#F0F0F0"
                         android:layout_marginBottom="16dp"/>
 
-                    <!-- Email Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -140,7 +138,6 @@
 
                     </LinearLayout>
 
-                    <!-- Username Row -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -187,7 +184,7 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- Personal Information -->
+            <!-- Menu Items -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnPersonalInfo"
                 android:layout_width="match_parent"
@@ -205,33 +202,13 @@
                     android:paddingEnd="16dp"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:text="👤"
-                        android:textSize="20sp"
-                        android:gravity="center"/>
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Personal Information"
-                        android:textSize="15sp"
-                        android:textColor="#000000"
-                        android:layout_marginStart="14dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="›"
-                        android:textSize="24sp"
-                        android:textColor="#CCCCCC"/>
+                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="👤" android:textSize="20sp" android:gravity="center"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Personal Information" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Login & Security -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnLoginSecurity"
                 android:layout_width="match_parent"
@@ -249,33 +226,13 @@
                     android:paddingEnd="16dp"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:text="🔒"
-                        android:textSize="20sp"
-                        android:gravity="center"/>
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Login &amp; security"
-                        android:textSize="15sp"
-                        android:textColor="#000000"
-                        android:layout_marginStart="14dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="›"
-                        android:textSize="24sp"
-                        android:textColor="#CCCCCC"/>
+                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="🔒" android:textSize="20sp" android:gravity="center"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Login &amp; security" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Privacy -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnPrivacy"
                 android:layout_width="match_parent"
@@ -293,33 +250,13 @@
                     android:paddingEnd="16dp"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:text="👌"
-                        android:textSize="20sp"
-                        android:gravity="center"/>
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Privacy"
-                        android:textSize="15sp"
-                        android:textColor="#000000"
-                        android:layout_marginStart="14dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="›"
-                        android:textSize="24sp"
-                        android:textColor="#CCCCCC"/>
+                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="👌" android:textSize="20sp" android:gravity="center"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Privacy" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Payment -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnPayment"
                 android:layout_width="match_parent"
@@ -337,33 +274,13 @@
                     android:paddingEnd="16dp"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:text="💳"
-                        android:textSize="20sp"
-                        android:gravity="center"/>
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Payment"
-                        android:textSize="15sp"
-                        android:textColor="#000000"
-                        android:layout_marginStart="14dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="›"
-                        android:textSize="24sp"
-                        android:textColor="#CCCCCC"/>
+                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="💳" android:textSize="20sp" android:gravity="center"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Payment" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Log Out Button -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnLogout"
                 android:layout_width="match_parent"
@@ -381,29 +298,9 @@
                     android:paddingEnd="16dp"
                     android:gravity="center_vertical">
 
-                    <TextView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:text="🚪"
-                        android:textSize="20sp"
-                        android:gravity="center"/>
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Log Out"
-                        android:textSize="15sp"
-                        android:textColor="#D32F2F"
-                        android:textStyle="bold"
-                        android:layout_marginStart="14dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="›"
-                        android:textSize="24sp"
-                        android:textColor="#FFAAAA"/>
+                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="🚪" android:textSize="20sp" android:gravity="center"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Log Out" android:textSize="15sp" android:textColor="#D32F2F" android:textStyle="bold" android:layout_marginStart="14dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#FFAAAA"/>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -424,7 +321,6 @@
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
-        <!-- Home Tab -->
         <LinearLayout
             android:id="@+id/navHome"
             android:layout_width="0dp"
@@ -433,50 +329,24 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_home"
-                android:tint="#B0CCEE"
-                android:contentDescription="Home"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Home"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
-                android:layout_marginTop="4dp"/>
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_home" android:tint="#B0CCEE" android:contentDescription="Home"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Home" android:textSize="12sp" android:textColor="#B0CCEE" android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
-        <!-- Notifications Tab -->
         <LinearLayout
-            android:id="@+id/navNotifications"
+            android:id="@+id/navMessages"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_notifications"
-                android:tint="#B0CCEE"
-                android:contentDescription="Notifications"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Messages"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
-                android:layout_marginTop="4dp"/>
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_messages" android:tint="#B0CCEE" android:contentDescription="Messages"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Messages" android:textSize="12sp" android:textColor="#B0CCEE" android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
-        <!-- Settings Tab -->
         <LinearLayout
             android:id="@+id/navSettings"
             android:layout_width="0dp"
@@ -485,24 +355,12 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_settings"
-                android:tint="#B0CCEE"
-                android:contentDescription="Settings"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Settings"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
-                android:layout_marginTop="4dp"/>
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_settings" android:tint="#B0CCEE" android:contentDescription="Settings"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Settings" android:textSize="12sp" android:textColor="#B0CCEE" android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
-        <!-- Profile Tab (active) -->
+        <!-- Profile Tab (Active) -->
         <LinearLayout
             android:id="@+id/navProfile"
             android:layout_width="0dp"
@@ -511,21 +369,8 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_profile"
-                android:tint="#FFFFFF"
-                android:contentDescription="Profile"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Profile"
-                android:textSize="12sp"
-                android:textColor="#FFFFFF"
-                android:textStyle="bold"
-                android:layout_marginTop="4dp"/>
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_profile" android:tint="#FFFFFF" android:contentDescription="Profile"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Profile" android:textSize="12sp" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 

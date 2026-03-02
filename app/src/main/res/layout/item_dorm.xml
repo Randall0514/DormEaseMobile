@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Frame for image with border and navigation buttons -->
+        <!-- Image with navigation buttons -->
         <FrameLayout
             android:id="@+id/flImageContainer"
             android:layout_width="0dp"
@@ -31,7 +31,6 @@
                 tools:src="@drawable/dorm_image_placeholder"
                 android:contentDescription="Dorm Image" />
 
-            <!-- Previous Button -->
             <ImageButton
                 android:id="@+id/btnPrevImage"
                 android:layout_width="40dp"
@@ -43,7 +42,6 @@
                 android:contentDescription="Previous Image"
                 android:padding="8dp" />
 
-            <!-- Next Button -->
             <ImageButton
                 android:id="@+id/btnNextImage"
                 android:layout_width="40dp"
@@ -57,6 +55,7 @@
 
         </FrameLayout>
 
+        <!-- Image indicators -->
         <LinearLayout
             android:id="@+id/llImageIndicator"
             android:layout_width="wrap_content"
@@ -65,9 +64,7 @@
             android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toTopOf="@+id/clDormInfo"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-            <!-- Indicators will be added programmatically -->
-        </LinearLayout>
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/clDormInfo"
@@ -82,7 +79,7 @@
                 android:id="@+id/tvDormName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="Salvador's Dorm"
+                android:text="Dorm Name"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="#000000"
@@ -106,14 +103,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Randall Salvador"
+                android:text="Owner"
                 android:textColor="#333333"
                 app:layout_constraintTop_toTopOf="@+id/ivOwnerIcon"
                 app:layout_constraintBottom_toBottomOf="@+id/ivOwnerIcon"
                 app:layout_constraintStart_toEndOf="@+id/ivOwnerIcon"
                 app:layout_constraintEnd_toEndOf="parent" />
 
-            <!-- Phone Row (below owner) -->
+            <!-- Phone Row -->
             <ImageView
                 android:id="@+id/ivPhoneIcon"
                 android:layout_width="24dp"
@@ -129,14 +126,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="+63 9123456789"
+                android:text="+63 9000000000"
                 android:textColor="#333333"
                 app:layout_constraintTop_toTopOf="@+id/ivPhoneIcon"
                 app:layout_constraintBottom_toBottomOf="@+id/ivPhoneIcon"
                 app:layout_constraintStart_toEndOf="@+id/ivPhoneIcon"
                 app:layout_constraintEnd_toEndOf="parent" />
 
-            <!-- Location Row (below phone) -->
+            <!-- Location Row -->
             <ImageView
                 android:id="@+id/ivLocationIcon"
                 android:layout_width="24dp"
@@ -152,7 +149,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Dagupan City, Pangasinan"
+                android:text="Location"
                 android:textColor="#333333"
                 app:layout_constraintTop_toTopOf="@+id/ivLocationIcon"
                 app:layout_constraintBottom_toBottomOf="@+id/ivLocationIcon"
@@ -164,7 +161,7 @@
                 android:id="@+id/tvPrice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="P 3,500/month"
+                android:text="₱ 0/month"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="#000000"
@@ -177,7 +174,7 @@
                 android:id="@+id/tvDeposit"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Deposit: P3,500"
+                android:text="Deposit: ₱0"
                 android:textColor="#555555"
                 app:layout_constraintTop_toBottomOf="@+id/tvPrice"
                 app:layout_constraintStart_toStartOf="parent" />
@@ -187,7 +184,7 @@
                 android:id="@+id/tvAdvance"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Advance: P3,500"
+                android:text="Advance: ₱0"
                 android:textColor="#555555"
                 app:layout_constraintTop_toBottomOf="@+id/tvDeposit"
                 app:layout_constraintStart_toStartOf="parent" />
@@ -199,41 +196,135 @@
                 android:layout_height="wrap_content"
                 android:text="Utilities:"
                 android:textColor="#333333"
+                android:textStyle="bold"
                 android:layout_marginTop="16dp"
                 app:layout_constraintTop_toBottomOf="@+id/tvAdvance"
                 app:layout_constraintStart_toStartOf="parent" />
 
-            <!-- Utilities Checkboxes -->
+            <!-- Utilities grid (3 columns × 3 rows) -->
             <LinearLayout
                 android:id="@+id/llUtilities"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:layout_marginTop="8dp"
                 app:layout_constraintTop_toBottomOf="@+id/tvUtilitiesLabel"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
 
-                <CheckBox
-                    android:id="@+id/cbWater"
-                    android:layout_width="wrap_content"
+                <!-- Row 1: Water, Electricity, WiFi -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Water"
-                    android:textColor="#333333" />
+                    android:orientation="horizontal">
 
-                <CheckBox
-                    android:id="@+id/cbElectricity"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Electricity"
-                    android:textColor="#333333" />
+                    <CheckBox
+                        android:id="@+id/cbWater"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Water"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
 
-                <CheckBox
-                    android:id="@+id/cbGas"
-                    android:layout_width="wrap_content"
+                    <CheckBox
+                        android:id="@+id/cbElectricity"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Electricity"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                    <CheckBox
+                        android:id="@+id/cbWifi"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="WiFi"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                </LinearLayout>
+
+                <!-- Row 2: Bed Frame, Foam, Kitchen -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Gas"
-                    android:textColor="#333333" />
+                    android:orientation="horizontal">
+
+                    <CheckBox
+                        android:id="@+id/cbBedFrame"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Bed Frame"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                    <CheckBox
+                        android:id="@+id/cbFoam"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Foam"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                    <CheckBox
+                        android:id="@+id/cbKitchen"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Kitchen"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                </LinearLayout>
+
+                <!-- Row 3: Restroom, No Curfew, Visitors OK -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <CheckBox
+                        android:id="@+id/cbRestroom"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Restroom"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                    <CheckBox
+                        android:id="@+id/cbNoCurfew"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="No Curfew"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                    <CheckBox
+                        android:id="@+id/cbVisitors"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Visitors OK"
+                        android:textColor="#333333"
+                        android:enabled="false"
+                        android:buttonTint="#2979FF" />
+
+                </LinearLayout>
 
             </LinearLayout>
 

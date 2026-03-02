@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FULL UPDATED FILE — replaces previous version -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="32dp"
+    android:background="@drawable/bottom_sheet_bg">
+
+    <!-- Handle bar -->
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:background="@drawable/sheet_handle"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="18dp"/>
+
+    <!-- Title — set dynamically -->
+    <TextView
+        android:id="@+id/tvSheetTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Reservation Approved!"
+        android:textSize="17sp"
+        android:textColor="#111111"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="6dp"/>
+
+    <!-- Status badge — set dynamically -->
+    <TextView
+        android:id="@+id/tvSheetBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="✓ Approved"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="#1E9650"
+        android:background="@drawable/badge_approved"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="14dp"/>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#EEF0F5"
+        android:layout_marginBottom="12dp"/>
+
+    <!-- Dorm Name -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Unit / Property"
+            android:textSize="13sp"
+            android:textColor="#7799CC"
+            android:textStyle="bold"/>
+        <TextView
+            android:id="@+id/tvSheetDormName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="—"
+            android:textSize="13sp"
+            android:textColor="#222222"
+            android:textStyle="bold"
+            android:gravity="end"/>
+    </LinearLayout>
+
+    <!-- Move-in Date -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Move-in Date"
+            android:textSize="13sp"
+            android:textColor="#7799CC"
+            android:textStyle="bold"/>
+        <TextView
+            android:id="@+id/tvSheetMoveIn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="—"
+            android:textSize="13sp"
+            android:textColor="#222222"
+            android:textStyle="bold"
+            android:gravity="end"/>
+    </LinearLayout>
+
+    <!-- Total Amount -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="10dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Total Amount"
+            android:textSize="13sp"
+            android:textColor="#7799CC"
+            android:textStyle="bold"/>
+        <TextView
+            android:id="@+id/tvSheetTotal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="—"
+            android:textSize="13sp"
+            android:textColor="#222222"
+            android:textStyle="bold"
+            android:gravity="end"/>
+    </LinearLayout>
+
+    <!-- Rejection Reason row (hidden unless status == rejected) -->
+    <LinearLayout
+        android:id="@+id/rowRejectReason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginBottom="10dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rejection Reason"
+            android:textSize="13sp"
+            android:textColor="#7799CC"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+        <TextView
+            android:id="@+id/tvSheetRejectReason"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textSize="13sp"
+            android:textColor="#D32F2F"
+            android:background="#FFF3F3"
+            android:padding="8dp"/>
+    </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#EEF0F5"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="18dp"/>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/bsBtnClose"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:text="Close"
+            android:textSize="13sp"
+            android:textColor="#4A90D9"
+            android:textStyle="bold"
+            android:background="@drawable/btn_outline_blue"
+            android:stateListAnimator="@null"/>
+
+        <Button
+            android:id="@+id/bsBtnAccept"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="Accept"
+            android:textSize="13sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:background="@drawable/btn_filled_blue"
+            android:stateListAnimator="@null"/>
+
+    </LinearLayout>
+
+</LinearLayout>

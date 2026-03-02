@@ -114,12 +114,11 @@
                     android:padding="16dp"
                     android:background="@android:color/white">
 
-                    <!-- Dorm Name -->
                     <TextView
                         android:id="@+id/tvDormName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Salvador's Dorm"
+                        android:text="Dorm Name"
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:textColor="#000000" />
@@ -145,7 +144,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:layout_marginStart="4dp"
-                            android:text="Randall Salvador"
+                            android:text="Owner"
                             android:textColor="#555555"
                             android:textSize="13sp" />
 
@@ -161,7 +160,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
-                            android:text="+63 9123456789"
+                            android:text="+63 9000000000"
                             android:textColor="#555555"
                             android:textSize="13sp" />
 
@@ -187,7 +186,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="4dp"
-                            android:text="Dagupan City, Pangasinan"
+                            android:text="Location"
                             android:textColor="#555555"
                             android:textSize="13sp" />
 
@@ -204,7 +203,7 @@
                         android:paddingEnd="12dp"
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp"
-                        android:text="2 Rooms Left"
+                        android:text="Rooms Capacity"
                         android:textColor="#555555"
                         android:textSize="12sp" />
 
@@ -240,13 +239,12 @@
                         android:id="@+id/tvPrice"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="₱ 3,500/month"
+                        android:text="₱ 0/month"
                         android:textColor="#000000"
                         android:textSize="22sp"
                         android:textStyle="bold"
                         android:layout_marginTop="2dp" />
 
-                    <!-- Advance and Deposit Badges -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -262,7 +260,7 @@
                             android:paddingEnd="14dp"
                             android:paddingTop="6dp"
                             android:paddingBottom="6dp"
-                            android:text="Advance: ₱3,500"
+                            android:text="Advance: ₱0"
                             android:textColor="#FFFFFF"
                             android:textSize="13sp"
                             android:textStyle="bold"
@@ -277,7 +275,7 @@
                             android:paddingEnd="14dp"
                             android:paddingTop="6dp"
                             android:paddingBottom="6dp"
-                            android:text="Deposit: ₱3,500"
+                            android:text="Deposit: ₱0"
                             android:textColor="#FFFFFF"
                             android:textSize="13sp"
                             android:textStyle="bold" />
@@ -313,6 +311,7 @@
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp" />
 
+                    <!-- Row 1: Water, Electricity, WiFi -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -320,8 +319,9 @@
 
                         <CheckBox
                             android:id="@+id/cbWater"
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:text="Water"
                             android:textColor="#333333"
                             android:enabled="false"
@@ -329,18 +329,96 @@
 
                         <CheckBox
                             android:id="@+id/cbElectricity"
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:text="Electricity"
                             android:textColor="#333333"
                             android:enabled="false"
                             android:buttonTint="#2979FF" />
 
                         <CheckBox
-                            android:id="@+id/cbGas"
-                            android:layout_width="wrap_content"
+                            android:id="@+id/cbWifi"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:text="Gas"
+                            android:layout_weight="1"
+                            android:text="WiFi"
+                            android:textColor="#333333"
+                            android:enabled="false"
+                            android:buttonTint="#2979FF" />
+
+                    </LinearLayout>
+
+                    <!-- Row 2: Bed Frame, Foam, Kitchen -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <CheckBox
+                            android:id="@+id/cbBedFrame"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Bed Frame"
+                            android:textColor="#333333"
+                            android:enabled="false"
+                            android:buttonTint="#2979FF" />
+
+                        <CheckBox
+                            android:id="@+id/cbFoam"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Foam"
+                            android:textColor="#333333"
+                            android:enabled="false"
+                            android:buttonTint="#2979FF" />
+
+                        <CheckBox
+                            android:id="@+id/cbKitchen"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Kitchen"
+                            android:textColor="#333333"
+                            android:enabled="false"
+                            android:buttonTint="#2979FF" />
+
+                    </LinearLayout>
+
+                    <!-- Row 3: Restroom, No Curfew, Visitors OK -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <CheckBox
+                            android:id="@+id/cbRestroom"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Restroom"
+                            android:textColor="#333333"
+                            android:enabled="false"
+                            android:buttonTint="#2979FF" />
+
+                        <CheckBox
+                            android:id="@+id/cbNoCurfew"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="No Curfew"
+                            android:textColor="#333333"
+                            android:enabled="false"
+                            android:buttonTint="#2979FF" />
+
+                        <CheckBox
+                            android:id="@+id/cbVisitors"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Visitors OK"
                             android:textColor="#333333"
                             android:enabled="false"
                             android:buttonTint="#2979FF" />
@@ -373,7 +451,6 @@
             android:textSize="15sp"
             android:textStyle="bold"
             android:backgroundTint="#FFFFFF"
-            android:strokeColor="#2979FF"
             app:strokeColor="#2979FF"
             app:strokeWidth="1.5dp"
             app:cornerRadius="12dp"

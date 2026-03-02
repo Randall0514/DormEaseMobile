@@ -1,8 +1,10 @@
 package com.firstapp.dormease.activity
 
 import android.app.DatePickerDialog
+import android.content.Context
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputFilter
 import android.text.TextWatcher
 import android.widget.ImageButton
 import android.widget.TextView
@@ -11,9 +13,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.firstapp.dormease.R
 import com.firstapp.dormease.model.Reservation
 import com.firstapp.dormease.network.RetrofitClient
+import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -22,6 +26,7 @@ class ReservationActivity : AppCompatActivity() {
     private lateinit var btnBack: ImageButton
     private lateinit var etFullName: TextInputEditText
     private lateinit var etPhoneNumber: TextInputEditText
+    private lateinit var tilPhoneNumber: TextInputLayout
     private lateinit var etMoveInDate: TextInputEditText
     private lateinit var etDuration: TextInputEditText
     private lateinit var etNotes: TextInputEditText
@@ -33,9 +38,11 @@ class ReservationActivity : AppCompatActivity() {
     private lateinit var tvSummaryAdvance: TextView
     private lateinit var tvSummaryTotal: TextView
 
+    private lateinit var sessionManager: SessionManager
+
     private var dormName: String = ""
     private var dormLocation: String = ""
-    private var dormOwnerId: Int = 0       // ← the owner this reservation belongs to
+    private var dormOwnerId: Int = 0
     private var pricePerMonth: Int = 0
     private var depositAmount: Int = 0
     private var advanceAmount: Int = 0
@@ -44,22 +51,23 @@ class ReservationActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_reservation)
 
-        // Retrieve dorm data passed via Intent
-        dormName      = intent.getStringExtra("DORM_NAME") ?: "N/A"
+        sessionManager = SessionManager(this)
+
+        dormName      = intent.getStringExtra("DORM_NAME")     ?: "N/A"
         dormLocation  = intent.getStringExtra("DORM_LOCATION") ?: "N/A"
-        dormOwnerId   = intent.getIntExtra("DORM_OWNER_ID", 0)  // ← receive owner id
-        val dormPrice   = intent.getStringExtra("DORM_PRICE") ?: "0"
+        dormOwnerId   = intent.getIntExtra("DORM_OWNER_ID", 0)
+        val dormPrice   = intent.getStringExtra("DORM_PRICE")   ?: "0"
         val dormDeposit = intent.getStringExtra("DORM_DEPOSIT") ?: "0"
         val dormAdvance = intent.getStringExtra("DORM_ADVANCE") ?: "0"
 
-        pricePerMonth = dormPrice.replace(",", "").toIntOrNull() ?: 0
+        pricePerMonth = dormPrice.replace(",", "").toIntOrNull()   ?: 0
         depositAmount = dormDeposit.replace(",", "").toIntOrNull() ?: 0
         advanceAmount = dormAdvance.replace(",", "").toIntOrNull() ?: 0
 
-        // Bind views
         btnBack              = findViewById(R.id.btnBack)
         etFullName           = findViewById(R.id.etFullName)
         etPhoneNumber        = findViewById(R.id.etPhoneNumber)
+        tilPhoneNumber       = findViewById(R.id.tilPhoneNumber)
         etMoveInDate         = findViewById(R.id.etMoveInDate)
         etDuration           = findViewById(R.id.etDuration)
         etNotes              = findViewById(R.id.etNotes)
@@ -70,22 +78,35 @@ class ReservationActivity : AppCompatActivity() {
         tvSummaryAdvance     = findViewById(R.id.tvSummaryAdvance)
         tvSummaryTotal       = findViewById(R.id.tvSummaryTotal)
 
-        // Populate dorm summary
         findViewById<TextView>(R.id.tvReserveDormName).text = dormName
         findViewById<TextView>(R.id.tvReserveLocation).text = dormLocation
         findViewById<TextView>(R.id.tvReservePrice).text    = "₱ $dormPrice/month"
         findViewById<TextView>(R.id.tvReserveDeposit).text  = "₱ $dormDeposit"
         findViewById<TextView>(R.id.tvReserveAdvance).text  = "₱ $dormAdvance"
 
+        etFullName.setText(sessionManager.getName())
+
+        tilPhoneNumber.prefixText = "+63"
+        etPhoneNumber.filters = arrayOf(InputFilter.LengthFilter(10))
+
+        etPhoneNumber.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                val input      = s.toString()
+                val digitsOnly = input.filter { it.isDigit() }
+                if (input != digitsOnly) {
+                    etPhoneNumber.setText(digitsOnly)
+                    etPhoneNumber.setSelection(digitsOnly.length)
+                }
+                if (digitsOnly.isNotEmpty()) tilPhoneNumber.error = null
+            }
+        })
+
         updatePaymentSummary(1)
 
-        btnBack.setOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
-
-        etMoveInDate.setOnClickListener {
-            showDatePicker()
-        }
+        btnBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        etMoveInDate.setOnClickListener { showDatePicker() }
 
         etDuration.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -97,9 +118,7 @@ class ReservationActivity : AppCompatActivity() {
         })
 
         btnSubmitReservation.setOnClickListener {
-            if (validateForm()) {
-                submitReservation()
-            }
+            if (validateForm()) submitReservation()
         }
     }
 
@@ -137,7 +156,17 @@ class ReservationActivity : AppCompatActivity() {
             return false
         }
         if (phone.isEmpty()) {
-            etPhoneNumber.error = "Phone number is required"
+            tilPhoneNumber.error = "Phone number is required"
+            etPhoneNumber.requestFocus()
+            return false
+        }
+        if (phone.length != 10) {
+            tilPhoneNumber.error = "Phone number must be exactly 10 digits"
+            etPhoneNumber.requestFocus()
+            return false
+        }
+        if (!phone.startsWith("9")) {
+            tilPhoneNumber.error = "Must start with 9 (e.g. 9XXXXXXXXX)"
             etPhoneNumber.requestFocus()
             return false
         }
@@ -159,12 +188,14 @@ class ReservationActivity : AppCompatActivity() {
         val rentTotal = pricePerMonth * duration
         val total     = rentTotal + depositAmount + advanceAmount
 
+        val fullPhone = "+63${etPhoneNumber.text.toString().trim()}"
+
         val reservation = Reservation(
             dorm_name       = dormName,
             location        = dormLocation,
-            dorm_owner_id   = dormOwnerId,   // ← sent to backend so only correct admin is notified
+            dorm_owner_id   = dormOwnerId,
             full_name       = etFullName.text.toString().trim(),
-            phone           = etPhoneNumber.text.toString().trim(),
+            phone           = fullPhone,
             move_in_date    = etMoveInDate.text.toString().trim(),
             duration_months = duration,
             price_per_month = pricePerMonth,
@@ -180,10 +211,21 @@ class ReservationActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val apiService = RetrofitClient.getApiService(applicationContext)
-                val response = apiService.submitReservation(reservation)
+                val response = RetrofitClient.getApiService(applicationContext)
+                    .submitReservation(reservation)
 
                 if (response.isSuccessful) {
+                    // Save phone so NotificationsActivity and DashboardActivity
+                    // can fetch this tenant's reservation status via REST
+                    sessionManager.savePhone(fullPhone)
+
+                    // Also persist into NotificationState so LoginActivity can
+                    // restore the phone even if DormEaseSession is cleared on logout
+                    getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("last_phone", fullPhone.filter { it.isDigit() }.takeLast(10))
+                        .apply()
+
                     Toast.makeText(
                         this@ReservationActivity,
                         "Reservation submitted! The owner will be notified.",

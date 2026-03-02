@@ -1,5 +1,8 @@
 package com.firstapp.dormease
 
+// File path: app/src/main/java/com/firstapp/dormease/LoginActivity.kt
+
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.*
@@ -23,7 +26,6 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         sessionManager = SessionManager(this)
-
         supportActionBar?.hide()
 
         val tilUsername = findViewById<TextInputLayout>(R.id.tilUsername)
@@ -36,17 +38,10 @@ class LoginActivity : AppCompatActivity() {
         tilPassword.setErrorIconDrawable(null)
 
         etUsername.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                tilUsername.error = null
-                tilUsername.isErrorEnabled = false
-            }
+            if (hasFocus) { tilUsername.error = null; tilUsername.isErrorEnabled = false }
         }
-
         etPassword.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                tilPassword.error = null
-                tilPassword.isErrorEnabled = false
-            }
+            if (hasFocus) { tilPassword.error = null; tilPassword.isErrorEnabled = false }
         }
 
         btnLogin.setOnClickListener {
@@ -65,14 +60,12 @@ class LoginActivity : AppCompatActivity() {
                 etUsername.requestFocus()
                 hasError = true
             }
-
             if (password.isEmpty()) {
                 tilPassword.isErrorEnabled = true
                 tilPassword.error = "Password is required"
                 if (!hasError) etPassword.requestFocus()
                 return@setOnClickListener
             }
-
             if (hasError) return@setOnClickListener
 
             val request = LoginRequest(
@@ -86,12 +79,22 @@ class LoginActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         val body = response.body()
 
-                        // Backend returns: { message, token, user: { id, fullName, username, email, platform } }
+                        // ── Restore the phone that was saved last time this user
+                        // logged in / submitted a reservation. The backend login
+                        // endpoint does not return phone, so we read it back from
+                        // "NotificationState" prefs where it was saved by
+                        // NotificationsActivity under KEY_LAST_PHONE.
+                        val notifPrefs = getSharedPreferences(
+                            "NotificationState", Context.MODE_PRIVATE
+                        )
+                        val savedPhone = notifPrefs.getString("last_phone", "") ?: ""
+
                         sessionManager.saveUserSession(
                             token    = body?.token              ?: "",
                             name     = body?.user?.fullName     ?: identifier,
                             email    = body?.user?.email        ?: "",
                             username = body?.user?.username     ?: identifier,
+                            phone    = savedPhone,   // ← restored from NotificationState
                             role     = "Tenant"
                         )
 
@@ -101,8 +104,7 @@ class LoginActivity : AppCompatActivity() {
                             Toast.LENGTH_SHORT
                         ).show()
 
-                        val intent = Intent(this@LoginActivity, DashboardActivity::class.java)
-                        startActivity(intent)
+                        startActivity(Intent(this@LoginActivity, DashboardActivity::class.java))
                         finish()
 
                     } else {
