@@ -20,7 +20,7 @@ import com.firstapp.dormease.model.Dorm
 class DormAdapter(private val dorms: List<Dorm>) :
     RecyclerView.Adapter<DormAdapter.DormViewHolder>() {
 
-    private val BASE_URL = "http://192.168.68.102:3000"
+    private val BASE_URL = "http://192.168.68.124:3000"
     private val currentImageIndex = mutableMapOf<Int, Int>()
 
     inner class DormViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

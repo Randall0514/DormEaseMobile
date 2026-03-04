@@ -15,7 +15,7 @@ import com.firstapp.dormease.R
 
 class DormDetailsActivity : AppCompatActivity() {
 
-    private val BASE_URL = "http://192.168.68.102:3000"
+    private val BASE_URL = "http://192.168.68.124:3000"
     private var photoUrls: ArrayList<String> = arrayListOf()
     private var currentImageIndex = 0
 
