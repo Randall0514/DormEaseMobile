@@ -1,5 +1,7 @@
 package com.firstapp.dormease.activity
 
+// FILE PATH: app/src/main/java/com/firstapp/dormease/activity/DormDetailsActivity.kt
+
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -12,10 +14,10 @@ import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import com.firstapp.dormease.R
+import com.firstapp.dormease.network.Constants
 
 class DormDetailsActivity : AppCompatActivity() {
 
-    private val BASE_URL = "http://192.168.68.124:3000"
     private var photoUrls: ArrayList<String> = arrayListOf()
     private var currentImageIndex = 0
 
@@ -134,7 +136,7 @@ class DormDetailsActivity : AppCompatActivity() {
 
     private fun loadImage(imageView: ImageView, url: String) {
         Glide.with(this)
-            .load(BASE_URL + url)
+            .load(Constants.SOCKET_URL + url)
             .placeholder(R.drawable.dorm_image_placeholder)
             .error(R.drawable.dorm_image_placeholder)
             .centerCrop()

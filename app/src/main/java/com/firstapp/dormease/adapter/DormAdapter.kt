@@ -1,5 +1,7 @@
 package com.firstapp.dormease.adapter
 
+// FILE PATH: app/src/main/java/com/firstapp/dormease/adapter/DormAdapter.kt
+
 import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
@@ -16,11 +18,11 @@ import com.firstapp.dormease.R
 import com.firstapp.dormease.activity.DormDetailsActivity
 import com.firstapp.dormease.activity.ReservationActivity
 import com.firstapp.dormease.model.Dorm
+import com.firstapp.dormease.network.Constants
 
 class DormAdapter(private val dorms: List<Dorm>) :
     RecyclerView.Adapter<DormAdapter.DormViewHolder>() {
 
-    private val BASE_URL = "http://192.168.68.124:3000"
     private val currentImageIndex = mutableMapOf<Int, Int>()
 
     inner class DormViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -150,7 +152,7 @@ class DormAdapter(private val dorms: List<Dorm>) :
 
     private fun loadImage(holder: DormViewHolder, photoUrls: List<String>, index: Int) {
         Glide.with(holder.itemView.context)
-            .load(BASE_URL + photoUrls[index])
+            .load(Constants.SOCKET_URL + photoUrls[index])
             .placeholder(R.drawable.dorm_image_placeholder)
             .error(R.drawable.dorm_image_placeholder)
             .centerCrop()

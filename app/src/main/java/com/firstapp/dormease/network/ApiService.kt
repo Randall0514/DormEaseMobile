@@ -1,10 +1,12 @@
 package com.firstapp.dormease.network
 
-// File path: app/src/main/java/com/firstapp/dormease/network/ApiService.kt
+// FILE PATH: app/src/main/java/com/firstapp/dormease/network/ApiService.kt
 
 import com.firstapp.dormease.model.LoginRequest
 import com.firstapp.dormease.model.ApiResponse
+import com.firstapp.dormease.model.MessageHistoryItem
 import com.firstapp.dormease.model.SignupRequest
+import com.firstapp.dormease.model.ContactUser
 import com.firstapp.dormease.model.Dorm
 import com.firstapp.dormease.model.Reservation
 import com.firstapp.dormease.model.ReservationResponse
@@ -14,6 +16,7 @@ import com.firstapp.dormease.model.TenantReservation
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -41,10 +44,33 @@ interface ApiService {
         @Query("phone") phone: String
     ): Response<List<TenantReservation>>
 
-    // Report back to the server when the tenant accepts or cancels an approved/rejected reservation
+    // ── NEW: fallback lookup using the auth token (no phone needed) ──────────
+    // Used by TenantDashboardActivity when no phone is saved locally.
+    // Calls GET /reservations/tenant/me — requires Bearer token in header
+    // (AuthInterceptor adds it automatically).
+    @GET("reservations/tenant/me")
+    suspend fun getMyReservations(): Response<List<TenantReservation>>
+
+    // Report back to the server when the tenant accepts or cancels
     @PATCH("reservations/{id}/tenant-action")
     suspend fun sendTenantAction(
         @Path("id") reservationId: Int,
         @Body action: TenantAction
     ): Response<TenantActionResponse>
+
+    // Load messaging contacts — only users with approved+accepted reservations
+    @GET("messages/contacts")
+    fun getMessageContacts(): Call<List<ContactUser>>
+
+    // Load full chat history with a specific contact (syncs with web)
+    @GET("messages/{contactId}/history")
+    suspend fun getMessageHistory(
+        @Path("contactId") contactId: Int
+    ): Response<List<MessageHistoryItem>>
+
+    // Delete (soft-delete) an entire conversation with a contact
+    @DELETE("messages/{contactId}")
+    suspend fun deleteConversation(
+        @Path("contactId") contactId: Int
+    ): Response<Void>
 }

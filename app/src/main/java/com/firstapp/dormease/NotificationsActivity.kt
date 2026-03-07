@@ -1,9 +1,10 @@
 package com.firstapp.dormease
 
-// File path: app/src/main/java/com/firstapp/dormease/NotificationsActivity.kt
+// FILE PATH: app/src/main/java/com/firstapp/dormease/NotificationsActivity.kt
 
 import android.app.Dialog
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
@@ -20,9 +21,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.firstapp.dormease.activity.TenantDashboardActivity
 import com.firstapp.dormease.model.TenantAction
 import com.firstapp.dormease.model.TenantReservation
 import com.firstapp.dormease.network.RetrofitClient
+import com.firstapp.dormease.network.SocketManager
 import com.firstapp.dormease.utils.SessionManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.gson.Gson
@@ -33,6 +36,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 class NotificationsActivity : AppCompatActivity() {
 
@@ -56,6 +60,11 @@ class NotificationsActivity : AppCompatActivity() {
     private val gson    = Gson()
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
+
+    private val socketListener: (JSONObject) -> Unit = { data ->
+        Log.d(TAG, "⚡ Socket.IO push received: $data")
+        handler.post { fetchAndRender() }
+    }
 
     private val refreshRunnable = object : Runnable {
         override fun run() {
@@ -121,7 +130,6 @@ class NotificationsActivity : AppCompatActivity() {
         try {
             prefs.edit().putString(KEY_CACHE + key, gson.toJson(list)).apply()
             Log.d(TAG, "saveCache: ${list.size} items → key='$key'")
-            list.forEach { Log.d(TAG, "  cached id=${it.id} status=${it.status}") }
         } catch (e: Exception) {
             Log.e(TAG, "saveCache failed: ${e.message}")
         }
@@ -135,7 +143,6 @@ class NotificationsActivity : AppCompatActivity() {
             val type = object : TypeToken<List<TenantReservation>>() {}.type
             val list: List<TenantReservation> = gson.fromJson(json, type) ?: emptyList()
             Log.d(TAG, "loadCache: ${list.size} items ← key='$key'")
-            list.forEach { Log.d(TAG, "  loaded id=${it.id} status=${it.status}") }
             list
         } catch (e: Exception) {
             Log.e(TAG, "loadCache parse failed: ${e.message}"); emptyList()
@@ -166,9 +173,21 @@ class NotificationsActivity : AppCompatActivity() {
         showCached()
     }
 
-    override fun onResume()  { super.onResume();  handler.post(refreshRunnable) }
-    override fun onPause()   { super.onPause();   handler.removeCallbacks(refreshRunnable) }
-    override fun onDestroy() { scope.cancel();    super.onDestroy() }
+    override fun onResume() {
+        super.onResume()
+        SocketManager.addReservationUpdateListener(socketListener)
+        SocketManager.addNotificationListener(socketListener)
+        handler.post(refreshRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        SocketManager.removeReservationUpdateListener(socketListener)
+        SocketManager.removeNotificationListener(socketListener)
+        handler.removeCallbacks(refreshRunnable)
+    }
+
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
 
     // ── Clear All ─────────────────────────────────────────────────────────────
 
@@ -222,9 +241,6 @@ class NotificationsActivity : AppCompatActivity() {
             .filter { it.id !in dismissed }
             .sortedByDescending { it.id }
 
-        Log.d(TAG, "showCached: ${visible.size} visible after filter")
-        visible.forEach { Log.d(TAG, "  visible id=${it.id} status=${it.status}") }
-
         renderCards(visible, key)
     }
 
@@ -266,21 +282,18 @@ class NotificationsActivity : AppCompatActivity() {
                     val dismissed = loadDismissed(key)
                     val all       = response.body() ?: emptyList()
 
-                    // ── LOG EVERY RECORD FROM SERVER ──────────────────────────
                     Log.d(TAG, "fetchAndRender: server returned ${all.size} total records")
-                    all.forEach { r ->
-                        Log.d(TAG, "  server record → id=${r.id} status='${r.status}' dorm='${r.dorm_name}' termReason='${r.termination_reason}'")
-                    }
 
                     val filtered = all
-                        .filter { it.status == "approved" || it.status == "rejected" || it.status == "terminated" }
+                        .filter {
+                            it.status == "approved" ||
+                                    it.status == "rejected" ||
+                                    it.status == "archived"
+                        }
                         .filter { it.id !in dismissed }
                         .sortedByDescending { it.id }
 
-                    Log.d(TAG, "fetchAndRender: ${filtered.size} after status+dismissed filter")
-                    filtered.forEach { r ->
-                        Log.d(TAG, "  filtered → id=${r.id} status='${r.status}'")
-                    }
+                    Log.d(TAG, "fetchAndRender: ${filtered.size} after filter")
 
                     saveCache(key, filtered)
                     renderCards(filtered, key)
@@ -312,7 +325,7 @@ class NotificationsActivity : AppCompatActivity() {
         emptyView.visibility = View.GONE
         for (res in reservations) {
             Log.d(TAG, "renderCards: building card id=${res.id} status='${res.status}'")
-            val card = if (res.status == "terminated") {
+            val card = if (res.status == "archived") {
                 Log.d(TAG, "renderCards: → using TERMINATED card layout")
                 buildTerminatedCard(res, key)
             } else {
@@ -322,7 +335,7 @@ class NotificationsActivity : AppCompatActivity() {
         }
     }
 
-    // ── Terminated card ───────────────────────────────────────────────────────
+    // ── Terminated / Archived card ────────────────────────────────────────────
 
     private fun buildTerminatedCard(res: TenantReservation, key: String): View {
         val card = LayoutInflater.from(this)
@@ -349,7 +362,7 @@ class NotificationsActivity : AppCompatActivity() {
 
     private fun buildCard(res: TenantReservation, key: String): View {
         val isApproved      = res.status == "approved"
-        val alreadyAccepted = isAccepted(key, res.id)
+        val alreadyAccepted = isAccepted(key, res.id) || res.tenant_action == "accepted"
 
         val card = LayoutInflater.from(this)
             .inflate(R.layout.item_notification_card, notifContainer, false)
@@ -471,8 +484,8 @@ class NotificationsActivity : AppCompatActivity() {
         tvBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_rejected_text))
 
         sheetView.findViewById<TextView>(R.id.tvSheetDormName).text = res.dorm_name
-        sheetView.findViewById<TextView>(R.id.tvSheetMoveIn).text   = res.move_in_date
-        sheetView.findViewById<TextView>(R.id.tvSheetTotal).text    = "₱${"%,.0f".format(res.total_amount)}"
+        sheetView.findViewById<TextView>(R.id.tvSheetMoveIn).text   = res.move_in_date ?: "—"
+        sheetView.findViewById<TextView>(R.id.tvSheetTotal).text    = "₱${"%,.0f".format(res.total_amount ?: 0.0)}"
 
         val rejectRow  = sheetView.findViewById<View>(R.id.rowRejectReason)
         val reasonText = res.termination_reason?.trim()
@@ -559,23 +572,36 @@ class NotificationsActivity : AppCompatActivity() {
         dialog.setCanceledOnTouchOutside(true)
 
         dialog.findViewById<TextView>(R.id.tvAcceptDormName).text = res.dorm_name
-        dialog.findViewById<TextView>(R.id.tvAcceptMoveIn).text   = res.move_in_date
-        dialog.findViewById<TextView>(R.id.tvAcceptTotal).text    = "₱${"%,.0f".format(res.total_amount)}"
+        dialog.findViewById<TextView>(R.id.tvAcceptMoveIn).text   = res.move_in_date ?: "—"
+        dialog.findViewById<TextView>(R.id.tvAcceptTotal).text    = "₱${"%,.0f".format(res.total_amount ?: 0.0)}"
 
         dialog.findViewById<Button>(R.id.btnAcceptDialogCancel).setOnClickListener { dialog.dismiss() }
 
         dialog.findViewById<Button>(R.id.btnAcceptDialogConfirm).setOnClickListener {
+            // 1. Persist acceptance locally so button stays greyed out.
             saveAccepted(key, res.id)
+
+            // 2. Tell the server (fire-and-forget — dashboard will confirm via poll).
             sendTenantAction(res.id, "accepted")
 
+            // 3. Update the card button immediately.
             cardAcceptBtn.text      = "✓ Accepted"
             cardAcceptBtn.isEnabled = false
             cardAcceptBtn.setBackgroundResource(R.drawable.btn_accepted)
-
             syncBtnInSheet?.let { it.text = "✓ Accepted"; it.isEnabled = false }
 
-            Toast.makeText(this, "Reservation accepted!", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
+            Toast.makeText(this, "Reservation accepted!", Toast.LENGTH_SHORT).show()
+
+            // 4. Navigate to TenantDashboardActivity with EXTRA_FORCE_CONFIRMED=true
+            //    so the dashboard shows the confirmed state immediately, without
+            //    waiting for the next 15-second poll cycle to confirm server update.
+            val intent = Intent(this, TenantDashboardActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(TenantDashboardActivity.EXTRA_FORCE_CONFIRMED, true)
+                putExtra(TenantDashboardActivity.EXTRA_RESERVATION_ID, res.id)
+            }
+            startActivity(intent)
         }
 
         dialog.show()
@@ -630,8 +656,8 @@ class NotificationsActivity : AppCompatActivity() {
         }
 
         sheetView.findViewById<TextView>(R.id.tvSheetDormName).text = res.dorm_name
-        sheetView.findViewById<TextView>(R.id.tvSheetMoveIn).text   = res.move_in_date
-        sheetView.findViewById<TextView>(R.id.tvSheetTotal).text    = "₱${"%,.0f".format(res.total_amount)}"
+        sheetView.findViewById<TextView>(R.id.tvSheetMoveIn).text   = res.move_in_date ?: "—"
+        sheetView.findViewById<TextView>(R.id.tvSheetTotal).text    = "₱${"%,.0f".format(res.total_amount ?: 0.0)}"
 
         val rejectRow = sheetView.findViewById<View>(R.id.rowRejectReason)
         val reason    = res.rejection_reason?.trim()
@@ -664,6 +690,14 @@ class NotificationsActivity : AppCompatActivity() {
                         bsBtnAccept.text      = "✓ Accepted"
                         bsBtnAccept.isEnabled = false
                         Toast.makeText(this, "Reservation accepted!", Toast.LENGTH_SHORT).show()
+
+                        // Navigate with force-confirmed flag.
+                        val intent = Intent(this, TenantDashboardActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            putExtra(TenantDashboardActivity.EXTRA_FORCE_CONFIRMED, true)
+                            putExtra(TenantDashboardActivity.EXTRA_RESERVATION_ID, res.id)
+                        }
+                        startActivity(intent)
                     }
                     dialog.dismiss()
                 }

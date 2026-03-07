@@ -50,7 +50,6 @@ dependencies {
     // Retrofit for API calls
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
     // Gson for JSON parsing
@@ -63,4 +62,9 @@ dependencies {
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
+    // Socket.IO client — real-time notifications
+    // NOTE: OkHttp 4.12.0 replaces your previous 4.11.0 (Socket.IO requires it)
+    implementation("io.socket:socket.io-client:2.1.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
