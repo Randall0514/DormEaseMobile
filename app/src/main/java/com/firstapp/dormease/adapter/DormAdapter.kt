@@ -39,7 +39,6 @@ class DormAdapter(private val dorms: List<Dorm>) :
         val tvAdvance: TextView            = itemView.findViewById(R.id.tvAdvance)
         val btnViewDetails: Button         = itemView.findViewById(R.id.btnViewDetails)
         val btnReserve: Button             = itemView.findViewById(R.id.btnReserve)
-        // Utilities
         val cbWater: CheckBox              = itemView.findViewById(R.id.cbWater)
         val cbElectricity: CheckBox        = itemView.findViewById(R.id.cbElectricity)
         val cbWifi: CheckBox               = itemView.findViewById(R.id.cbWifi)
@@ -59,10 +58,11 @@ class DormAdapter(private val dorms: List<Dorm>) :
 
     override fun onBindViewHolder(holder: DormViewHolder, position: Int) {
         val dorm = dorms[position]
+        if (!currentImageIndex.containsKey(position)) currentImageIndex[position] = 0
 
-        if (!currentImageIndex.containsKey(position)) {
-            currentImageIndex[position] = 0
-        }
+        // Use server-supplied occupied count directly
+        val occupiedBeds  = dorm.occupiedCount
+        val availableBeds = (dorm.roomCapacity - occupiedBeds).coerceAtLeast(0)
 
         holder.tvDormName.text    = dorm.dormName
         holder.tvOwnerName.text   = dorm.ownerName ?: "Unknown Owner"
@@ -72,7 +72,7 @@ class DormAdapter(private val dorms: List<Dorm>) :
         holder.tvDeposit.text     = "Deposit: ₱${dorm.deposit ?: "N/A"}"
         holder.tvAdvance.text     = "Advance: ₱${dorm.advance ?: "N/A"}"
 
-        // ── Utilities ────────────────────────────────────────────────────────
+        // Utilities
         val u = dorm.utilities
         holder.cbWater.isChecked       = u.contains("water")
         holder.cbElectricity.isChecked = u.contains("electricity")
@@ -83,14 +83,13 @@ class DormAdapter(private val dorms: List<Dorm>) :
         holder.cbRestroom.isChecked    = u.contains("restroom")
         holder.cbNoCurfew.isChecked    = u.contains("noCurfew")
         holder.cbVisitors.isChecked    = u.contains("visitorsAllowed")
-
         listOf(
             holder.cbWater, holder.cbElectricity, holder.cbWifi,
             holder.cbBedFrame, holder.cbFoam, holder.cbKitchen,
             holder.cbRestroom, holder.cbNoCurfew, holder.cbVisitors
         ).forEach { it.isEnabled = false }
 
-        // ── Images ───────────────────────────────────────────────────────────
+        // Images
         if (!dorm.photoUrls.isNullOrEmpty()) {
             val currentIndex = currentImageIndex[position] ?: 0
             loadImage(holder, dorm.photoUrls, currentIndex)
@@ -99,15 +98,12 @@ class DormAdapter(private val dorms: List<Dorm>) :
                 if (currentIndex > 0) View.VISIBLE else View.INVISIBLE
             holder.btnNextImage.visibility =
                 if (currentIndex < dorm.photoUrls.size - 1) View.VISIBLE else View.INVISIBLE
-
             holder.btnPrevImage.setOnClickListener {
-                val newIndex = (currentIndex - 1).coerceAtLeast(0)
-                currentImageIndex[position] = newIndex
+                currentImageIndex[position] = (currentIndex - 1).coerceAtLeast(0)
                 notifyItemChanged(position)
             }
             holder.btnNextImage.setOnClickListener {
-                val newIndex = (currentIndex + 1).coerceAtMost(dorm.photoUrls.size - 1)
-                currentImageIndex[position] = newIndex
+                currentImageIndex[position] = (currentIndex + 1).coerceAtMost(dorm.photoUrls.size - 1)
                 notifyItemChanged(position)
             }
         } else {
@@ -116,26 +112,27 @@ class DormAdapter(private val dorms: List<Dorm>) :
             holder.ivDormImage.setImageResource(R.drawable.dorm_image_placeholder)
         }
 
-        // ── View Details ─────────────────────────────────────────────────────
+        // View Details — passes real occupied count from server
         holder.btnViewDetails.setOnClickListener {
             val context = holder.itemView.context
             val intent = Intent(context, DormDetailsActivity::class.java).apply {
-                putExtra("DORM_NAME",       dorm.dormName)
-                putExtra("DORM_OWNER",      dorm.ownerName ?: "Unknown Owner")
-                putExtra("DORM_OWNER_ID",   dorm.ownerId ?: 0)
-                putExtra("DORM_PHONE",      dorm.phone)
-                putExtra("DORM_LOCATION",   dorm.address)
-                putExtra("DORM_PRICE",      dorm.price.toString())
-                putExtra("DORM_DEPOSIT",    dorm.deposit?.toString() ?: "0")
-                putExtra("DORM_ADVANCE",    dorm.advance?.toString() ?: "0")
-                putExtra("DORM_ROOMS_LEFT", dorm.roomCapacity)
+                putExtra("DORM_NAME",          dorm.dormName)
+                putExtra("DORM_OWNER",         dorm.ownerName ?: "Unknown Owner")
+                putExtra("DORM_OWNER_ID",      dorm.ownerId ?: 0)
+                putExtra("DORM_PHONE",         dorm.phone)
+                putExtra("DORM_LOCATION",      dorm.address)
+                putExtra("DORM_PRICE",         dorm.price.toString())
+                putExtra("DORM_DEPOSIT",       dorm.deposit?.toString() ?: "0")
+                putExtra("DORM_ADVANCE",       dorm.advance?.toString() ?: "0")
+                putExtra("DORM_ROOMS_LEFT",    dorm.roomCapacity)
+                putExtra("DORM_OCCUPIED_BEDS", occupiedBeds)
                 putStringArrayListExtra("DORM_UTILITIES",  ArrayList(dorm.utilities))
                 putStringArrayListExtra("DORM_PHOTO_URLS", ArrayList(dorm.photoUrls ?: emptyList()))
             }
             context.startActivity(intent)
         }
 
-        // ── Reserve ──────────────────────────────────────────────────────────
+        // Reserve
         holder.btnReserve.setOnClickListener {
             val context = holder.itemView.context
             val intent = Intent(context, ReservationActivity::class.java).apply {

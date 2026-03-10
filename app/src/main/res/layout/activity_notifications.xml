@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- FILE PATH: app/src/main/res/layout/activity_notifications.xml -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -44,6 +45,20 @@
 
     </RelativeLayout>
 
+    <!-- Offline Banner (shown only when network fails but cache exists) -->
+    <TextView
+        android:id="@+id/tvOfflineBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/header"
+        android:background="#FFF3CD"
+        android:padding="10dp"
+        android:text="⚠ Offline — showing saved notifications"
+        android:textColor="#856404"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:visibility="gone"/>
+
     <!-- Section label -->
     <TextView
         android:id="@+id/tvSectionLabel"
@@ -53,9 +68,19 @@
         android:textSize="13sp"
         android:textColor="#B0CCEE"
         android:textStyle="bold"
-        android:layout_below="@id/header"
+        android:layout_below="@id/tvOfflineBanner"
         android:layout_marginStart="20dp"
         android:layout_marginBottom="4dp"/>
+
+    <!-- Progress (shown on first load only) -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tvSectionLabel"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="40dp"
+        android:visibility="gone"/>
 
     <!-- SwipeRefreshLayout wraps the scroll content -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -82,7 +107,7 @@
                     android:id="@+id/tvEmpty"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="No notifications yet.\nPull down to refresh."
+                    android:text="No notifications yet.&#10;Pull down to refresh."
                     android:textSize="14sp"
                     android:textColor="#B0CCEE"
                     android:gravity="center"

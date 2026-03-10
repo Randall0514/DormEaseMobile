@@ -17,10 +17,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.firstapp.dormease.activity.TenantDashboardActivity
 import com.firstapp.dormease.network.MessageRepository
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.network.SocketManager
-import com.firstapp.dormease.utils.HomeRouter
 import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -108,7 +108,6 @@ class MessagesActivity : AppCompatActivity() {
     private lateinit var viewConnectionDot  : View
     private lateinit var tvConnectionStatus : TextView
 
-    // Contacts loaded from /messages/contacts (approved tenant↔owner pairs)
     private val allConversations = mutableListOf<ConversationItem>()
 
     private val newMessageListener: (JSONObject) -> Unit = { data ->
@@ -137,7 +136,6 @@ class MessagesActivity : AppCompatActivity() {
         rvConversations.layoutManager = LinearLayoutManager(this)
         rvConversations.adapter       = adapter
 
-        // Search filter
         findViewById<EditText>(R.id.etSearch).addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -146,10 +144,9 @@ class MessagesActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) = Unit
         })
 
-        // Bottom navigation
+        // ── Bottom navigation ─────────────────────────────────────────────────
         findViewById<LinearLayout>(R.id.navHome).setOnClickListener {
-            // Route to TenantDashboard or DashboardActivity depending on reservation status
-            HomeRouter.navigate(this, lifecycleScope, sessionManager)
+            navigateHome()
         }
         findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -160,7 +157,6 @@ class MessagesActivity : AppCompatActivity() {
             finish()
         }
 
-        // Socket listeners
         updateConnectionUI(SocketManager.isConnected())
         SocketManager.addConnectionListener(connectionListener)
         SocketManager.addNewMessageListener(newMessageListener)
@@ -179,7 +175,41 @@ class MessagesActivity : AppCompatActivity() {
         SocketManager.removeConnectionListener(connectionListener)
     }
 
-    // ── Load contacts from /messages/contacts ─────────────────────────────────
+    /**
+     * Decide the correct Home screen without a network call.
+     *
+     * Rules (checked locally from SharedPreferences — instant, no API needed):
+     *   1. terminated flag set → DashboardActivity
+     *   2. phone saved in SessionManager → TenantDashboardActivity
+     *   3. last_phone saved in NotificationState → TenantDashboardActivity
+     *   4. otherwise → DashboardActivity
+     */
+    private fun navigateHome() {
+        val target = resolvHomeTarget()
+        startActivity(Intent(this, target).apply {
+            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        })
+    }
+
+    private fun resolvHomeTarget(): Class<*> {
+        if (sessionManager.isTerminated()) return DashboardActivity::class.java
+
+        val phone = sessionManager.getPhone().trim()
+        if (phone.isNotBlank()) return TenantDashboardActivity::class.java
+
+        val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
+        val lastPhone  = (notifPrefs.getString("last_phone", "") ?: "").trim()
+        if (lastPhone.isNotBlank()) {
+            // Restore phone so future checks are instant
+            val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
+            if (digits.isNotBlank()) sessionManager.savePhone("+63$digits")
+            return TenantDashboardActivity::class.java
+        }
+
+        return DashboardActivity::class.java
+    }
+
+    // ── Load contacts ─────────────────────────────────────────────────────────
 
     private fun loadContacts() {
         RetrofitClient.getApiService(this)
@@ -201,10 +231,7 @@ class MessagesActivity : AppCompatActivity() {
                                 }
                             }
                             allConversations.add(
-                                ConversationItem(
-                                    userId   = contact.id,
-                                    userName = label
-                                )
+                                ConversationItem(userId = contact.id, userName = label)
                             )
                         }
                         refreshPreviewsFromCache()
@@ -212,29 +239,16 @@ class MessagesActivity : AppCompatActivity() {
                         showEmpty(allConversations.isEmpty())
                     } else {
                         showEmpty(true)
-                        Toast.makeText(
-                            this@MessagesActivity,
-                            "Could not load contacts",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(this@MessagesActivity, "Could not load contacts", Toast.LENGTH_SHORT).show()
                     }
                 }
 
-                override fun onFailure(
-                    call: Call<List<com.firstapp.dormease.model.ContactUser>>,
-                    t: Throwable
-                ) {
+                override fun onFailure(call: Call<List<com.firstapp.dormease.model.ContactUser>>, t: Throwable) {
                     showEmpty(true)
-                    Toast.makeText(
-                        this@MessagesActivity,
-                        "Network error: ${t.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this@MessagesActivity, "Network error: ${t.message}", Toast.LENGTH_SHORT).show()
                 }
             })
     }
-
-    // ── Pull last-message info from MessageRepository into conversation items ──
 
     private fun refreshPreviewsFromCache() {
         allConversations.forEach { conv ->
@@ -247,8 +261,6 @@ class MessagesActivity : AppCompatActivity() {
         }
         filterConversations(findViewById<EditText>(R.id.etSearch).text.toString())
     }
-
-    // ── Socket.IO incoming message ────────────────────────────────────────────
 
     private fun handleIncomingMessage(data: JSONObject) {
         val senderId = data.optInt("senderId", -1)
@@ -284,16 +296,11 @@ class MessagesActivity : AppCompatActivity() {
         showEmpty(allConversations.isEmpty())
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
     private fun filterConversations(query: String) {
-        val filtered = if (query.isBlank()) {
-            allConversations
-        } else {
-            allConversations.filter {
-                it.userName.contains(query, ignoreCase = true) ||
-                        it.preview.contains(query, ignoreCase = true)
-            }
+        val filtered = if (query.isBlank()) allConversations
+        else allConversations.filter {
+            it.userName.contains(query, ignoreCase = true) ||
+                    it.preview.contains(query, ignoreCase = true)
         }
         val sorted = filtered.sortedByDescending { it.updatedAt }
         adapter.updateList(sorted)
@@ -303,12 +310,10 @@ class MessagesActivity : AppCompatActivity() {
     private fun openChat(conversation: ConversationItem) {
         conversation.unreadCount = 0
         filterConversations(findViewById<EditText>(R.id.etSearch).text.toString())
-
-        val intent = Intent(this, ChatActivity::class.java).apply {
+        startActivity(Intent(this, ChatActivity::class.java).apply {
             putExtra("EXTRA_RECIPIENT_ID",   conversation.userId)
             putExtra("EXTRA_RECIPIENT_NAME", conversation.userName)
-        }
-        startActivity(intent)
+        })
     }
 
     private fun showEmpty(empty: Boolean) {

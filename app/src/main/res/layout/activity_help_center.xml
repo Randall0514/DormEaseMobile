@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FILE PATH: app/src/main/res/layout/activity_help_center.xml -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/gradient_background">
+
+    <!-- Top Bar -->
+    <RelativeLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="16dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_back"
+            android:tint="#FFFFFF"
+            android:padding="8dp"
+            android:layout_centerVertical="true"
+            android:contentDescription="Back"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/btnBack"
+            android:layout_centerVertical="true"
+            android:text="Help Center"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp"/>
+
+    </RelativeLayout>
+
+    <!-- Content -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Frequently Asked Questions"
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+
+            <!-- FAQ 1 -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/faqCard1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="#FFFFFF">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:id="@+id/faqQuestion1" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="#000000" android:textStyle="bold"/>
+                    <TextView android:id="@+id/faqAnswer1"   android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:textColor="#555555" android:layout_marginTop="8dp" android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- FAQ 2 -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/faqCard2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="#FFFFFF">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:id="@+id/faqQuestion2" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="#000000" android:textStyle="bold"/>
+                    <TextView android:id="@+id/faqAnswer2"   android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:textColor="#555555" android:layout_marginTop="8dp" android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- FAQ 3 -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/faqCard3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="#FFFFFF">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:id="@+id/faqQuestion3" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="#000000" android:textStyle="bold"/>
+                    <TextView android:id="@+id/faqAnswer3"   android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:textColor="#555555" android:layout_marginTop="8dp" android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- FAQ 4 -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/faqCard4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="#FFFFFF">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:id="@+id/faqQuestion4" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="#000000" android:textStyle="bold"/>
+                    <TextView android:id="@+id/faqAnswer4"   android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:textColor="#555555" android:layout_marginTop="8dp" android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- FAQ 5 -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/faqCard5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="#FFFFFF">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView android:id="@+id/faqQuestion5" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:textColor="#000000" android:textStyle="bold"/>
+                    <TextView android:id="@+id/faqAnswer5"   android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:textColor="#555555" android:layout_marginTop="8dp" android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Tap hint -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tap a question to expand the answer."
+                android:textSize="12sp"
+                android:textColor="#B0CCEE"
+                android:layout_marginTop="8dp"
+                android:layout_gravity="center_horizontal"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</RelativeLayout>

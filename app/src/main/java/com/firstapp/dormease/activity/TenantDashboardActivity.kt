@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
@@ -23,6 +24,8 @@ import com.firstapp.dormease.SettingsActivity
 import com.firstapp.dormease.model.TenantReservation
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.utils.SessionManager
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,8 +49,8 @@ class TenantDashboardActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
 
     private var lastReservation: TenantReservation? = null
+    private var terminationDialogShowing = false
 
-    // ── Views ─────────────────────────────────────────────────────────────────
     private lateinit var tvGreeting          : TextView
     private lateinit var tvWelcomeName       : TextView
     private lateinit var tvAvatarInitial     : TextView
@@ -63,14 +66,10 @@ class TenantDashboardActivity : AppCompatActivity() {
     private lateinit var tvPaymentStatus     : TextView
     private lateinit var tvNextDueDate       : TextView
     private lateinit var tvNotificationBadge : TextView
-
-    // cardConfirmed is LinearLayout in XML
-    // cardPending and cardNoReservation are CardView in XML
     private lateinit var cardConfirmed       : LinearLayout
     private lateinit var cardPending         : CardView
     private lateinit var cardNoReservation   : CardView
 
-    // ── Polling ───────────────────────────────────────────────────────────────
     private val pollRunnable = object : Runnable {
         override fun run() {
             loadReservation()
@@ -79,7 +78,6 @@ class TenantDashboardActivity : AppCompatActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tenant_dashboard)
@@ -90,13 +88,12 @@ class TenantDashboardActivity : AppCompatActivity() {
         setupGreeting()
         setupBottomNav()
 
-        // Bell → open notifications
         findViewById<FrameLayout>(R.id.notificationBellContainer).setOnClickListener {
-            startActivity(Intent(this, NotificationsActivity::class.java))
+            startActivity(Intent(this, NotificationsActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            })
         }
 
-        // If navigated here right after tenant tapped Accept,
-        // show confirmed state immediately without waiting for network.
         if (intent.getBooleanExtra(EXTRA_FORCE_CONFIRMED, false)) {
             showState(State.CONFIRMED)
             handler.postDelayed({ loadReservation() }, 1_500L)
@@ -105,8 +102,11 @@ class TenantDashboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        lastReservation?.let { populateDashboard(it) }
-        handler.post(pollRunnable)
+        // Always reload fresh data when returning from any sub-page
+        loadReservation()
+        fetchNotificationCount()
+        handler.removeCallbacks(pollRunnable)
+        handler.postDelayed(pollRunnable, 15_000L)
     }
 
     override fun onPause() {
@@ -119,7 +119,6 @@ class TenantDashboardActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun bindViews() {
         tvGreeting           = findViewById(R.id.tvGreeting)
         tvWelcomeName        = findViewById(R.id.tvWelcomeName)
@@ -141,7 +140,6 @@ class TenantDashboardActivity : AppCompatActivity() {
         cardNoReservation    = findViewById(R.id.cardNoReservation)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun setupGreeting() {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         tvGreeting.text = when {
@@ -154,20 +152,17 @@ class TenantDashboardActivity : AppCompatActivity() {
         tvAvatarInitial.text = name.firstOrNull()?.uppercaseChar()?.toString() ?: "T"
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun fetchNotificationCount() {
         val rawPhone = sessionManager.getPhone().trim()
         if (rawPhone.isBlank()) { updateBadge(0); return }
         val phoneParam = "+63${rawPhone.filter { it.isDigit() }.takeLast(10)}"
         scope.launch {
             try {
-                val api      = RetrofitClient.getApiService(applicationContext)
-                val response = api.getTenantReservations(phoneParam)
-                val count = if (response.isSuccessful) {
-                    response.body()
-                        ?.count { it.status == "approved" || it.status == "rejected" }
-                        ?: 0
-                } else 0
+                val response = RetrofitClient.getApiService(applicationContext)
+                    .getTenantReservations(phoneParam)
+                val count = if (response.isSuccessful)
+                    response.body()?.count { it.status == "approved" || it.status == "rejected" } ?: 0
+                else 0
                 withContext(Dispatchers.Main) { updateBadge(count) }
             } catch (e: Exception) {
                 Log.w("TenantDashboard", "Badge fetch failed: ${e.message}")
@@ -176,29 +171,32 @@ class TenantDashboardActivity : AppCompatActivity() {
     }
 
     private fun updateBadge(count: Int) {
-        if (count > 0) {
-            tvNotificationBadge.visibility = View.VISIBLE
-            tvNotificationBadge.text       = if (count > 9) "9+" else count.toString()
-        } else {
-            tvNotificationBadge.visibility = View.GONE
-        }
+        tvNotificationBadge.visibility = if (count > 0) View.VISIBLE else View.GONE
+        if (count > 0) tvNotificationBadge.text = if (count > 9) "9+" else count.toString()
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun loadReservation() {
         val rawPhone = sessionManager.getPhone().trim()
         val userId   = sessionManager.getUserId()
         when {
             rawPhone.isNotBlank() -> {
-                val digits = rawPhone.filter { it.isDigit() }.takeLast(10)
-                fetchByPhone("+63$digits")
+                fetchByPhone("+63${rawPhone.filter { it.isDigit() }.takeLast(10)}")
             }
             userId > 0 -> fetchByUserId()
-            else -> { if (lastReservation == null) showState(State.NO_RESERVATION) }
+            else -> {
+                val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
+                val lastPhone  = (notifPrefs.getString("last_phone", "") ?: "").trim()
+                if (lastPhone.isNotBlank()) {
+                    val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
+                    sessionManager.savePhone("+63$digits")
+                    fetchByPhone("+63$digits")
+                } else if (lastReservation == null) {
+                    showState(State.NO_RESERVATION)
+                }
+            }
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun fetchByPhone(phoneParam: String) {
         scope.launch {
             try {
@@ -210,8 +208,7 @@ class TenantDashboardActivity : AppCompatActivity() {
                     }
                     return@launch
                 }
-                val list = response.body() ?: emptyList()
-                withContext(Dispatchers.Main) { resolveAndShow(list) }
+                withContext(Dispatchers.Main) { resolveAndShow(response.body() ?: emptyList()) }
             } catch (e: Exception) {
                 Log.e("TenantDashboard", "fetchByPhone error: ${e.message}")
                 withContext(Dispatchers.Main) {
@@ -221,7 +218,6 @@ class TenantDashboardActivity : AppCompatActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun fetchByUserId() {
         scope.launch {
             try {
@@ -248,79 +244,86 @@ class TenantDashboardActivity : AppCompatActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Core routing logic.
-    //
-    // Priority:
-    //   1. approved + not cancelled  → show confirmed dashboard
-    //   2. pending                   → show pending card
-    //   3. ALL non-rejected/archived → only archived/rejected remain
-    //      → tenant has been terminated, redirect to DashboardActivity (browse dorms)
-    //   4. nothing at all            → show no-reservation card
-    // ─────────────────────────────────────────────────────────────────────────
     private fun resolveAndShow(reservations: List<TenantReservation>) {
-        val approved = reservations.firstOrNull {
-            it.status == "approved" && it.tenant_action != "cancelled"
+        val approved = reservations.firstOrNull { r ->
+            r.status == "approved" && r.tenant_action != "cancelled"
         }
         val pending = reservations.firstOrNull { it.status == "pending" }
 
         when {
             approved != null -> {
-                // Check if the previously confirmed reservation just became archived
-                // (i.e. the owner terminated tenancy while the app was open).
                 if (lastReservation != null &&
                     lastReservation!!.status == "approved" &&
-                    reservations.none {
-                        it.id == lastReservation!!.id && it.status == "approved"
-                    }
+                    reservations.none { it.id == lastReservation!!.id && it.status == "approved" }
                 ) {
-                    handleTermination()
+                    handleTermination(reservations.firstOrNull {
+                        it.id == lastReservation!!.id && it.status == "archived"
+                    })
                     return
                 }
                 populateDashboard(approved)
             }
-
             pending != null -> showState(State.PENDING)
-
             else -> {
-                // No approved or pending reservation remains.
-                // If the tenant previously had an active reservation (lastReservation
-                // was approved) but now it's gone / archived, they were terminated.
                 val wasActive = lastReservation?.status == "approved" ||
                         lastReservation?.status == "pending"
-                val hasArchived = reservations.any { it.status == "archived" }
-
-                if (wasActive || hasArchived) {
-                    // Terminated — send back to the browse-dorms screen.
-                    handleTermination()
+                val archived = reservations.firstOrNull { it.status == "archived" }
+                if (wasActive || archived != null) {
+                    handleTermination(archived)
                 } else if (lastReservation == null) {
                     showState(State.NO_RESERVATION)
                 }
-                // else: keep showing whatever was on screen while we wait for
-                //       a definitive server answer (avoids flicker on network delay)
             }
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Navigate to DashboardActivity (available dorms) and clear the back stack
-    // so the tenant cannot press Back and return to TenantDashboardActivity.
-    // ─────────────────────────────────────────────────────────────────────────
-    private fun handleTermination() {
-        Log.d("TenantDashboard", "Tenancy terminated — routing to DashboardActivity")
-        lastReservation = null
-        // Wipe phone from both SharedPreferences stores so HomeRouter and
-        // MainActivity never route back to TenantDashboardActivity again.
-        sessionManager.markTerminated()
-        startActivity(
-            Intent(this, DashboardActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    private fun handleTermination(archivedReservation: TenantReservation? = null) {
+        if (terminationDialogShowing) return
+        terminationDialogShowing = true
+        handler.removeCallbacks(pollRunnable)
+
+        val dormName = archivedReservation?.dorm_name?.takeIf { it.isNotBlank() } ?: "your dorm"
+        val reason   = archivedReservation?.termination_reason?.trim()
+            ?.takeIf { it.isNotBlank() } ?: "No reason was provided."
+
+        if (archivedReservation != null) {
+            val phone = sessionManager.getPhone().trim().filter { it.isDigit() }.takeLast(10)
+            if (phone.isNotBlank()) {
+                val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
+                val gson       = Gson()
+                val cacheKey   = "cache_$phone"
+                val existing = try {
+                    val json = notifPrefs.getString(cacheKey, null)
+                    if (!json.isNullOrBlank()) gson.fromJson<List<TenantReservation>>(
+                        json, object : TypeToken<List<TenantReservation>>() {}.type
+                    ) ?: emptyList() else emptyList()
+                } catch (e: Exception) { emptyList() }
+                val merged = existing.filter { it.id != archivedReservation.id }.toMutableList()
+                merged.add(0, archivedReservation)
+                notifPrefs.edit()
+                    .putString(cacheKey, gson.toJson(merged))
+                    .putString("last_phone", phone)
+                    .apply()
             }
-        )
-        finish()
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("⚠ Tenancy Terminated")
+            .setMessage("Your tenancy at $dormName has been terminated by the owner.\n\nReason:\n$reason")
+            .setCancelable(false)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                terminationDialogShowing = false
+                lastReservation = null
+                sessionManager.markTerminated()
+                startActivity(Intent(this, DashboardActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                })
+                finish()
+            }
+            .show()
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun populateDashboard(r: TenantReservation) {
         lastReservation = r
         showState(State.CONFIRMED)
@@ -336,54 +339,54 @@ class TenantDashboardActivity : AppCompatActivity() {
         val advance = r.advance?.toLong()         ?: 0L
 
         tvMonthlyRent.text        = "₱${fmt.format(price)}"
-        tvDeposit.text            = "₱${fmt.format(deposit)}"
-        tvAdvance.text            = "₱${fmt.format(advance)}"
         tvMonthlyRentSummary.text = "₱${fmt.format(price)}.00"
+
+        val depositUsed = r.deposit_used == true
+        tvDeposit.text       = if (depositUsed) "₱${fmt.format(deposit)} (Used)" else "₱${fmt.format(deposit)}"
+        tvDeposit.paintFlags = if (depositUsed)
+            tvDeposit.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+        else tvDeposit.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
+        tvDeposit.setTextColor(ContextCompat.getColor(this,
+            if (depositUsed) android.R.color.darker_gray else android.R.color.black))
+
+        val advanceUsed = r.advance_used == true
+        tvAdvance.text       = if (advanceUsed) "₱${fmt.format(advance)} (Used)" else "₱${fmt.format(advance)}"
+        tvAdvance.paintFlags = if (advanceUsed)
+            tvAdvance.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+        else tvAdvance.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
+        tvAdvance.setTextColor(ContextCompat.getColor(this,
+            if (advanceUsed) android.R.color.darker_gray else android.R.color.black))
 
         val paid  = r.payments_paid   ?: 0
         val total = r.duration_months ?: 1
-
-        // Mirror the web dashboard logic exactly:
-        // The web marks payment #N as PAID only when N <= payments_paid.
-        // "Current due" = the month number whose due date has arrived today
-        //   (i.e. how many monthly periods have elapsed since move-in, capped at total).
-        // If payments_paid >= currentDue  → current period is paid.
-        // If payments_paid < currentDue   → current period is UNPAID.
-        // If payments_paid >= total       → contract fully paid.
-        val currentDue = computeCurrentPaymentDue(r.move_in_date, total)
+        val currentDue          = computeCurrentPaymentDue(r.move_in_date, total)
+        val currentDueDateStr   = computeNextDueDate(r.move_in_date, currentDue - 1)
+        val nextUpcomingDateStr = computeNextDueDate(r.move_in_date, paid)
 
         when {
             paid >= total -> {
-                // Every month in the contract has been paid
                 tvPaymentStatus.text = "✓ Fully Paid"
                 tvPaymentStatus.setTextColor(ContextCompat.getColor(this, R.color.payment_paid))
                 tvNextDueDate.text = "—"
                 tvNextDueDate.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
             }
             paid >= currentDue -> {
-                // The current due payment has been marked paid by the owner
                 tvPaymentStatus.text = "✓ Paid"
                 tvPaymentStatus.setTextColor(ContextCompat.getColor(this, R.color.payment_paid))
-                // Show the date of the NEXT unpaid payment (paid + 1)
-                tvNextDueDate.text = computeNextDueDate(r.move_in_date, paid)
+                tvNextDueDate.text = nextUpcomingDateStr
                 tvNextDueDate.setTextColor(ContextCompat.getColor(this, R.color.due_date_orange))
             }
             else -> {
-                // The owner has NOT yet marked the current due payment as paid
                 tvPaymentStatus.text = "⚠ Unpaid"
-                tvPaymentStatus.setTextColor(
-                    ContextCompat.getColor(this, android.R.color.holo_red_dark)
-                )
-                // Show the due date of the unpaid payment (paid + 1 = currentDue)
-                tvNextDueDate.text = computeNextDueDate(r.move_in_date, paid)
-                tvNextDueDate.setTextColor(ContextCompat.getColor(this, R.color.due_date_orange))
+                tvPaymentStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                tvNextDueDate.text = currentDueDateStr
+                tvNextDueDate.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
             }
         }
 
         tvReservationStatus.text = "● Reservation Confirmed"
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private enum class State { CONFIRMED, PENDING, NO_RESERVATION }
 
     private fun showState(state: State) {
@@ -392,7 +395,6 @@ class TenantDashboardActivity : AppCompatActivity() {
         cardNoReservation.visibility = if (state == State.NO_RESERVATION) View.VISIBLE else View.GONE
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun formatDate(raw: String?): String {
         if (raw.isNullOrBlank()) return "—"
         return try {
@@ -403,60 +405,39 @@ class TenantDashboardActivity : AppCompatActivity() {
                 SimpleDateFormat("dd/MM/yyyy",                    Locale.US)
             )
             val outFmt = SimpleDateFormat("MMM dd, yyyy", Locale.US)
-            val date   = parsers.firstNotNullOfOrNull { runCatching { it.parse(raw) }.getOrNull() }
-            date?.let { outFmt.format(it) } ?: raw
+            parsers.firstNotNullOfOrNull { runCatching { it.parse(raw) }.getOrNull() }
+                ?.let { outFmt.format(it) } ?: raw
         } catch (_: Exception) { raw }
     }
 
-    // Returns the formatted date of the next payment due after paidMonths paid.
-    // e.g. if paid=2 and move-in was Jan 1, returns "Apr 01, YYYY" (month 3 due date).
-    // Web dashboard schedule: payment #N is due at moveInDate + (N-1) months.
-    // So the next unpaid payment number is (paidMonths + 1), and its due date is
-    // moveInDate + paidMonths months (NOT +paidMonths+1 — that would be one ahead).
-    // Example: move-in = March 1, paid = 0 → payment #1 due = March 1 (+ 0 months).
-    //          move-in = March 1, paid = 1 → payment #2 due = April 1 (+ 1 month).
     private fun computeNextDueDate(moveInDate: String?, paidMonths: Int): String {
         if (moveInDate.isNullOrBlank()) return "—"
         return try {
-            val base = parseMoveInDate(moveInDate) ?: return "—"
+            val base   = parseMoveInDate(moveInDate) ?: return "—"
             val outFmt = SimpleDateFormat("MMM dd, yyyy", Locale.US)
-            val cal = Calendar.getInstance().apply {
-                time = base
-                add(Calendar.MONTH, paidMonths) // paidMonths, not paidMonths+1
-            }
+            val cal    = Calendar.getInstance().apply { time = base; add(Calendar.MONTH, paidMonths) }
             outFmt.format(cal.time)
         } catch (_: Exception) { "—" }
     }
 
-    // Mirrors the web dashboard's payment schedule logic:
-    // Count how many full monthly periods have elapsed since move-in as of today.
-    // That is the payment number that is currently "due" (minimum 1, max = total).
-    // e.g. on the exact move-in day = payment 1 is due.
-    //      one month later           = payment 2 is due.
     private fun computeCurrentPaymentDue(moveInDate: String?, totalMonths: Int): Int {
         if (moveInDate.isNullOrBlank()) return 1
         return try {
-            val base = parseMoveInDate(moveInDate) ?: return 1
+            val base  = parseMoveInDate(moveInDate) ?: return 1
             val today = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0);      set(Calendar.MILLISECOND, 0)
             }
-            // Walk forward month by month from move-in until we pass today
-            val cal = Calendar.getInstance().apply { time = base }
-            var paymentNumber = 1
-            while (paymentNumber < totalMonths) {
-                val nextDue = Calendar.getInstance().apply {
-                    time = base
-                    add(Calendar.MONTH, paymentNumber) // payment N+1 is due N months after move-in
-                }
-                if (nextDue.after(today)) break   // next due hasn't arrived yet → current = paymentNumber
-                paymentNumber++
+            var n = 1
+            while (n < totalMonths) {
+                val due = Calendar.getInstance().apply { time = base; add(Calendar.MONTH, n) }
+                if (due.after(today)) break
+                n++
             }
-            paymentNumber
+            n
         } catch (_: Exception) { 1 }
     }
 
-    // Shared date parser — matches all formats the server returns.
     private fun parseMoveInDate(raw: String): java.util.Date? {
         val parsers = listOf(
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { isLenient = false },
@@ -467,19 +448,25 @@ class TenantDashboardActivity : AppCompatActivity() {
         return parsers.firstNotNullOfOrNull { runCatching { it.parse(raw) }.getOrNull() }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     private fun setupBottomNav() {
-        // Home = this screen, no action needed
-        findViewById<LinearLayout>(R.id.navHome).setOnClickListener { /* already here */ }
+        // Home — already here, no-op
+        findViewById<LinearLayout>(R.id.navHome).setOnClickListener { /* already on home */ }
 
+        // Other tabs use REORDER_TO_FRONT to keep this activity alive in the stack
         findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
-            startActivity(Intent(this, MessagesActivity::class.java))
+            startActivity(Intent(this, MessagesActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            })
         }
         findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+            startActivity(Intent(this, SettingsActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            })
         }
         findViewById<LinearLayout>(R.id.navProfile).setOnClickListener {
-            startActivity(Intent(this, ProfileActivity::class.java))
+            startActivity(Intent(this, ProfileActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            })
         }
     }
 }

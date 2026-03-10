@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.firstapp.dormease.adapter.DormAdapter
 import com.firstapp.dormease.model.Dorm
-import com.firstapp.dormease.model.TenantReservation
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -38,7 +37,6 @@ class DashboardActivity : AppCompatActivity() {
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
 
-    // Refresh badge count every 15 s while dashboard is visible
     private val badgeRunnable = object : Runnable {
         override fun run() {
             fetchNotificationCount()
@@ -46,14 +44,13 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
         supportActionBar?.hide()
 
-        sessionManager       = SessionManager(this)
-        tvNotificationBadge  = findViewById(R.id.tvNotificationBadge)
+        sessionManager      = SessionManager(this)
+        tvNotificationBadge = findViewById(R.id.tvNotificationBadge)
 
         rvDorms = findViewById(R.id.rvDorms)
         rvDorms.layoutManager = LinearLayoutManager(this)
@@ -62,12 +59,9 @@ class DashboardActivity : AppCompatActivity() {
 
         fetchAvailableDorms()
 
-        // Bell → open notifications
         findViewById<FrameLayout>(R.id.notificationBellContainer).setOnClickListener {
             startActivity(Intent(this, NotificationsActivity::class.java))
         }
-
-        // Bottom nav
         findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
             startActivity(Intent(this, MessagesActivity::class.java))
         }
@@ -81,8 +75,9 @@ class DashboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Refresh badge immediately when coming back from NotificationsActivity
         handler.post(badgeRunnable)
+        // Refresh dorm list so occupied counts are up to date when returning
+        fetchAvailableDorms()
     }
 
     override fun onPause() {
@@ -95,34 +90,23 @@ class DashboardActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Fetch the tenant's reservations just to update the bell badge count.
-    // Same endpoint NotificationsActivity uses — no background service needed.
-    // ─────────────────────────────────────────────────────────────────────────
     private fun fetchNotificationCount() {
         val rawPhone = sessionManager.getPhone().trim()
-        if (rawPhone.isBlank()) {
-            updateBadge(0)
-            return
-        }
+        if (rawPhone.isBlank()) { updateBadge(0); return }
 
-        val digits    = rawPhone.filter { it.isDigit() }
-        val last10    = digits.takeLast(10)
-        val phoneParam = "+63$last10"
+        val digits     = rawPhone.filter { it.isDigit() }.takeLast(10)
+        val phoneParam = "+63$digits"
 
         scope.launch {
             try {
                 val api      = RetrofitClient.getApiService(applicationContext)
                 val response = api.getTenantReservations(phoneParam)
-
                 val count = if (response.isSuccessful) {
                     response.body()
                         ?.count { it.status == "approved" || it.status == "rejected" }
                         ?: 0
                 } else 0
-
                 withContext(Dispatchers.Main) { updateBadge(count) }
-
             } catch (e: Exception) {
                 Log.w("DashboardActivity", "Badge fetch failed: ${e.message}")
             }
@@ -138,28 +122,32 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // occupied_count is now returned directly by GET /dorms/available from the server
     private fun fetchAvailableDorms() {
         RetrofitClient.getApiService(this).getAvailableDorms()
             .enqueue(object : Callback<List<Dorm>> {
                 override fun onResponse(call: Call<List<Dorm>>, response: Response<List<Dorm>>) {
                     if (response.isSuccessful) {
-                        val dorms = response.body()
-                        if (dorms != null) {
-                            Log.d("DashboardActivity", "Fetched ${dorms.size} dorms")
-                            dormAdapter = DormAdapter(dorms)
-                            rvDorms.adapter = dormAdapter
-                        } else {
-                            Toast.makeText(this@DashboardActivity, "No dorms available", Toast.LENGTH_SHORT).show()
-                        }
+                        val dorms = response.body() ?: emptyList()
+                        Log.d("DashboardActivity", "Fetched ${dorms.size} dorms")
+                        dormAdapter = DormAdapter(dorms)
+                        rvDorms.adapter = dormAdapter
                     } else {
-                        Toast.makeText(this@DashboardActivity, "Failed to load dorms: ${response.message()}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@DashboardActivity,
+                            "Failed to load dorms: ${response.message()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
                 override fun onFailure(call: Call<List<Dorm>>, t: Throwable) {
                     Log.e("DashboardActivity", "Network error", t)
-                    Toast.makeText(this@DashboardActivity, "Network error: ${t.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@DashboardActivity,
+                        "Network error: ${t.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             })
     }

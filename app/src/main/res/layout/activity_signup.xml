@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- FILE PATH: app/src/main/res/layout/activity_signup.xml -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -52,7 +53,7 @@
                 android:orientation="vertical"
                 android:padding="28dp">
 
-                <!-- Thin accent line on top -->
+                <!-- Accent line -->
                 <View
                     android:layout_width="48dp"
                     android:layout_height="3dp"
@@ -60,7 +61,6 @@
                     android:layout_gravity="center"
                     android:layout_marginBottom="16dp"/>
 
-                <!-- Create Account Title -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -80,7 +80,7 @@
                     android:layout_gravity="center"
                     android:layout_marginBottom="24dp"/>
 
-                <!-- Full Name Input -->
+                <!-- Full Name -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilFullName"
                     android:layout_width="match_parent"
@@ -97,7 +97,6 @@
                     app:hintTextColor="#7A8FA6"
                     app:errorTextColor="#FF6B6B"
                     app:errorIconDrawable="@null">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etFullName"
                         android:layout_width="match_parent"
@@ -109,10 +108,9 @@
                         android:textColorHint="#7A8FA6"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"/>
-
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Username Input -->
+                <!-- Username -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilUsername"
                     android:layout_width="match_parent"
@@ -129,7 +127,6 @@
                     app:hintTextColor="#7A8FA6"
                     app:errorTextColor="#FF6B6B"
                     app:errorIconDrawable="@null">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etUsername"
                         android:layout_width="match_parent"
@@ -141,10 +138,9 @@
                         android:textColorHint="#7A8FA6"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"/>
-
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Email Input -->
+                <!-- Email -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilEmail"
                     android:layout_width="match_parent"
@@ -161,7 +157,6 @@
                     app:hintTextColor="#7A8FA6"
                     app:errorTextColor="#FF6B6B"
                     app:errorIconDrawable="@null">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
                         android:layout_width="match_parent"
@@ -173,10 +168,43 @@
                         android:textColorHint="#7A8FA6"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"/>
-
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Password Input -->
+                <!-- ── Mobile Number (NEW) ───────────────────────────────── -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilPhone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxBackgroundColor="#2A3947"
+                    app:boxStrokeColor="#2E4A6E"
+                    app:startIconDrawable="@drawable/ic_phone"
+                    app:startIconTint="#4A90D9"
+                    app:prefixText="+63 "
+                    app:prefixTextColor="#7A8FA6"
+                    app:hintTextColor="#7A8FA6"
+                    app:errorTextColor="#FF6B6B"
+                    app:errorIconDrawable="@null">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etPhone"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:hint="9XXXXXXXXX"
+                        android:inputType="phone"
+                        android:maxLength="10"
+                        android:textSize="15sp"
+                        android:textColor="@android:color/white"
+                        android:textColorHint="#7A8FA6"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"/>
+                </com.google.android.material.textfield.TextInputLayout>
+                <!-- ── End Mobile Number ─────────────────────────────────── -->
+
+                <!-- Password -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilPassword"
                     android:layout_width="match_parent"
@@ -195,7 +223,6 @@
                     app:hintTextColor="#7A8FA6"
                     app:errorTextColor="#FF6B6B"
                     app:errorIconDrawable="@null">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
                         android:layout_width="match_parent"
@@ -207,10 +234,9 @@
                         android:textColorHint="#7A8FA6"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"/>
-
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Password Requirements Section -->
+                <!-- Password Requirements -->
                 <LinearLayout
                     android:id="@+id/llPasswordRequirements"
                     android:layout_width="match_parent"
@@ -275,7 +301,7 @@
 
                 </LinearLayout>
 
-                <!-- Confirm Password Input -->
+                <!-- Confirm Password -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilConfirmPassword"
                     android:layout_width="match_parent"
@@ -294,7 +320,6 @@
                     app:hintTextColor="#7A8FA6"
                     app:errorTextColor="#FF6B6B"
                     app:errorIconDrawable="@null">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConfirmPassword"
                         android:layout_width="match_parent"
@@ -306,10 +331,9 @@
                         android:textColorHint="#7A8FA6"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"/>
-
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Terms and Privacy Policy Checkbox -->
+                <!-- Terms Checkbox -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -348,7 +372,7 @@
                     android:elevation="6dp"
                     android:letterSpacing="0.05"/>
 
-                <!-- Already have account link -->
+                <!-- Already have account -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -377,9 +401,7 @@
                 </LinearLayout>
 
             </LinearLayout>
-
         </androidx.cardview.widget.CardView>
 
     </RelativeLayout>
-
 </ScrollView>

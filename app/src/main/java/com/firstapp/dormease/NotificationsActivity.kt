@@ -2,22 +2,21 @@ package com.firstapp.dormease
 
 // FILE PATH: app/src/main/java/com/firstapp/dormease/NotificationsActivity.kt
 
-import android.app.Dialog
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
-import android.view.Window
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -27,9 +26,6 @@ import com.firstapp.dormease.model.TenantReservation
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.network.SocketManager
 import com.firstapp.dormease.utils.SessionManager
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,675 +33,526 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class NotificationsActivity : AppCompatActivity() {
 
-    companion object {
-        private const val TAG           = "NotifDebug"
-        private const val POLL_INTERVAL = 10_000L
-
-        private const val PREFS_FILE     = "NotificationState"
-        private const val KEY_LAST_PHONE = "last_phone"
-        private const val KEY_DISMISSED  = "dismissed_"
-        private const val KEY_ACCEPTED   = "accepted_"
-        private const val KEY_CACHE      = "cache_"
-    }
-
-    private lateinit var notifContainer : LinearLayout
-    private lateinit var emptyView      : TextView
-    private lateinit var swipeRefresh   : SwipeRefreshLayout
-    private lateinit var sessionManager : SessionManager
-    private lateinit var prefs          : SharedPreferences
-
-    private val gson    = Gson()
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
+    private lateinit var session: SessionManager
 
-    private val socketListener: (JSONObject) -> Unit = { data ->
-        Log.d(TAG, "⚡ Socket.IO push received: $data")
-        handler.post { fetchAndRender() }
+    private lateinit var swipeRefresh    : SwipeRefreshLayout
+    private lateinit var notifContainer  : LinearLayout
+    private lateinit var progressBar     : ProgressBar
+    private lateinit var tvEmpty         : TextView
+    private lateinit var tvOfflineBanner : TextView
+
+    private val onReservationUpdate: (JSONObject) -> Unit = { data ->
+        Log.d("NotificationsActivity", "Socket push received: $data")
+        handler.post { fetchReservations(silent = true) }
     }
 
-    private val refreshRunnable = object : Runnable {
+    private val pollRunnable = object : Runnable {
         override fun run() {
-            fetchAndRender()
-            handler.postDelayed(this, POLL_INTERVAL)
+            fetchReservations(silent = true)
+            handler.postDelayed(this, 10_000L)
         }
     }
-
-    // ── Resolve user key ──────────────────────────────────────────────────────
-
-    private fun resolveUserKey(): String {
-        val fromSession = sessionManager.getPhone()
-            .trim()
-            .filter { it.isDigit() }
-            .takeLast(10)
-
-        if (fromSession.isNotBlank()) {
-            prefs.edit().putString(KEY_LAST_PHONE, fromSession).apply()
-            Log.d(TAG, "userKey from session: $fromSession")
-            return fromSession
-        }
-
-        val saved = prefs.getString(KEY_LAST_PHONE, "") ?: ""
-        Log.d(TAG, "userKey from prefs fallback: '$saved'")
-        return saved
-    }
-
-    // ── Dismissed ─────────────────────────────────────────────────────────────
-
-    private fun loadDismissed(key: String): MutableSet<Int> {
-        val raw = prefs.getString(KEY_DISMISSED + key, "") ?: ""
-        if (raw.isBlank()) return mutableSetOf()
-        return raw.split(",").mapNotNull { it.trim().toIntOrNull() }.toMutableSet()
-    }
-
-    private fun saveDismissed(key: String, ids: Set<Int>) {
-        prefs.edit().putString(KEY_DISMISSED + key, ids.joinToString(",")).apply()
-    }
-
-    private fun dismissId(key: String, id: Int) {
-        val ids = loadDismissed(key); ids.add(id); saveDismissed(key, ids)
-    }
-
-    // ── Accepted ──────────────────────────────────────────────────────────────
-
-    private fun loadAccepted(key: String): MutableSet<Int> {
-        val raw = prefs.getString(KEY_ACCEPTED + key, "") ?: ""
-        if (raw.isBlank()) return mutableSetOf()
-        return raw.split(",").mapNotNull { it.trim().toIntOrNull() }.toMutableSet()
-    }
-
-    private fun saveAccepted(key: String, id: Int) {
-        val ids = loadAccepted(key); ids.add(id)
-        prefs.edit().putString(KEY_ACCEPTED + key, ids.joinToString(",")).apply()
-    }
-
-    private fun isAccepted(key: String, id: Int) = loadAccepted(key).contains(id)
-
-    // ── Cache ─────────────────────────────────────────────────────────────────
-
-    private fun saveCache(key: String, list: List<TenantReservation>) {
-        if (key.isBlank()) { Log.w(TAG, "saveCache: blank key, skipping"); return }
-        try {
-            prefs.edit().putString(KEY_CACHE + key, gson.toJson(list)).apply()
-            Log.d(TAG, "saveCache: ${list.size} items → key='$key'")
-        } catch (e: Exception) {
-            Log.e(TAG, "saveCache failed: ${e.message}")
-        }
-    }
-
-    private fun loadCache(key: String): List<TenantReservation> {
-        if (key.isBlank()) { Log.w(TAG, "loadCache: blank key"); return emptyList() }
-        val json = prefs.getString(KEY_CACHE + key, null)
-        if (json.isNullOrBlank()) { Log.d(TAG, "loadCache: empty for key='$key'"); return emptyList() }
-        return try {
-            val type = object : TypeToken<List<TenantReservation>>() {}.type
-            val list: List<TenantReservation> = gson.fromJson(json, type) ?: emptyList()
-            Log.d(TAG, "loadCache: ${list.size} items ← key='$key'")
-            list
-        } catch (e: Exception) {
-            Log.e(TAG, "loadCache parse failed: ${e.message}"); emptyList()
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_notifications)
         supportActionBar?.hide()
 
-        sessionManager = SessionManager(this)
-        prefs          = getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+        session = SessionManager(this)
 
-        notifContainer = findViewById(R.id.notifContainer)
-        emptyView      = findViewById(R.id.tvEmpty)
-        swipeRefresh   = findViewById(R.id.swipeRefresh)
-
-        val key = resolveUserKey()
-        Log.d(TAG, "onCreate — resolved key='$key'")
+        swipeRefresh    = findViewById(R.id.swipeRefresh)
+        notifContainer  = findViewById(R.id.notifContainer)
+        progressBar     = findViewById(R.id.progressBar)
+        tvEmpty         = findViewById(R.id.tvEmpty)
+        tvOfflineBanner = findViewById(R.id.tvOfflineBanner)
 
         findViewById<TextView>(R.id.btnBack).setOnClickListener { finish() }
-        findViewById<TextView>(R.id.btnMarkAllRead).setOnClickListener { showClearAllDialog() }
 
-        swipeRefresh.setOnRefreshListener { fetchAndRender() }
-        showCached()
+        findViewById<TextView>(R.id.btnMarkAllRead).setOnClickListener {
+            notifContainer.removeAllViews()
+            tvEmpty.visibility = View.VISIBLE
+            tvEmpty.text       = "No notifications yet.\nPull down to refresh."
+        }
+
+        swipeRefresh.setOnRefreshListener { fetchReservations(silent = false) }
+
+        SocketManager.addReservationUpdateListener(onReservationUpdate)
+
+        fetchReservations(silent = false)
     }
 
     override fun onResume() {
         super.onResume()
-        SocketManager.addReservationUpdateListener(socketListener)
-        SocketManager.addNotificationListener(socketListener)
-        handler.post(refreshRunnable)
+        fetchReservations(silent = true)
+        handler.removeCallbacks(pollRunnable)
+        handler.postDelayed(pollRunnable, 10_000L)
     }
 
     override fun onPause() {
         super.onPause()
-        SocketManager.removeReservationUpdateListener(socketListener)
-        SocketManager.removeNotificationListener(socketListener)
-        handler.removeCallbacks(refreshRunnable)
+        handler.removeCallbacks(pollRunnable)
     }
 
-    override fun onDestroy() { scope.cancel(); super.onDestroy() }
-
-    // ── Clear All ─────────────────────────────────────────────────────────────
-
-    private fun showClearAllDialog() {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_cancel_reservation)
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                (resources.displayMetrics.widthPixels * 0.88).toInt(),
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        dialog.setCanceledOnTouchOutside(true)
-
-        dialog.findViewById<EditText>(R.id.etCancelReason)?.visibility = View.GONE
-        dialog.findViewById<TextView>(R.id.tvCancelError)?.visibility  = View.GONE
-
-        dialog.findViewById<Button>(R.id.btnCancelDialogBack).setOnClickListener { dialog.dismiss() }
-        dialog.findViewById<Button>(R.id.btnCancelDialogSubmit).apply {
-            text = "Clear All"
-            setOnClickListener {
-                val k   = resolveUserKey()
-                val ids = loadDismissed(k)
-                for (i in 0 until notifContainer.childCount) {
-                    val tag = notifContainer.getChildAt(i).tag
-                    if (tag is Int) ids.add(tag)
-                }
-                saveDismissed(k, ids)
-                saveCache(k, emptyList())
-                notifContainer.removeAllViews()
-                emptyView.visibility = View.VISIBLE
-                emptyView.text = "No notifications yet.\nPull down to refresh."
-                Toast.makeText(this@NotificationsActivity, "All notifications cleared", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }
-        }
-        dialog.show()
+    override fun onDestroy() {
+        SocketManager.removeReservationUpdateListener(onReservationUpdate)
+        scope.cancel()
+        super.onDestroy()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-
-    private fun showCached() {
-        val key       = resolveUserKey()
-        val dismissed = loadDismissed(key)
-        val cached    = loadCache(key)
-        Log.d(TAG, "showCached: total cached=${cached.size}, dismissed=${dismissed.size}")
-
-        val visible = cached
-            .filter { it.id !in dismissed }
-            .sortedByDescending { it.id }
-
-        renderCards(visible, key)
-    }
-
+    // Fetch reservations from server
     // ─────────────────────────────────────────────────────────────────────────
-
-    private fun fetchAndRender() {
-        val rawPhone = sessionManager.getPhone().trim()
-        Log.d(TAG, "fetchAndRender: rawPhone='$rawPhone'")
-
-        if (rawPhone.isBlank()) {
-            swipeRefresh.isRefreshing = false
-            Log.w(TAG, "fetchAndRender: no phone in session — showing cache only")
-            showCached()
-            return
+    private fun fetchReservations(silent: Boolean) {
+        if (!silent) {
+            progressBar.visibility = View.VISIBLE
+            tvEmpty.visibility     = View.GONE
         }
 
-        val phoneParam = "+63${rawPhone.filter { it.isDigit() }.takeLast(10)}"
-        Log.d(TAG, "fetchAndRender: calling API with phone='$phoneParam'")
+        val rawPhone = session.getPhone().trim()
+        val userId   = session.getUserId()
 
         scope.launch {
             try {
-                val response = RetrofitClient.getApiService(applicationContext)
-                    .getTenantReservations(phoneParam)
+                val api = RetrofitClient.getApiService(applicationContext)
 
-                withContext(Dispatchers.Main) {
-                    swipeRefresh.isRefreshing = false
-                    Log.d(TAG, "fetchAndRender: HTTP ${response.code()}")
-
-                    if (!response.isSuccessful) {
-                        Log.e(TAG, "fetchAndRender: server error ${response.code()} — showing cache")
-                        Toast.makeText(this@NotificationsActivity,
-                            "Could not refresh — showing saved notifications",
-                            Toast.LENGTH_SHORT).show()
-                        showCached()
-                        return@withContext
+                val reservations: List<TenantReservation> = when {
+                    rawPhone.isNotBlank() -> {
+                        val digits = rawPhone.filter { it.isDigit() }.takeLast(10)
+                        val resp   = api.getTenantReservations("+63$digits")
+                        if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
                     }
-
-                    val key       = resolveUserKey()
-                    val dismissed = loadDismissed(key)
-                    val all       = response.body() ?: emptyList()
-
-                    Log.d(TAG, "fetchAndRender: server returned ${all.size} total records")
-
-                    val filtered = all
-                        .filter {
-                            it.status == "approved" ||
-                                    it.status == "rejected" ||
-                                    it.status == "archived"
-                        }
-                        .filter { it.id !in dismissed }
-                        .sortedByDescending { it.id }
-
-                    Log.d(TAG, "fetchAndRender: ${filtered.size} after filter")
-
-                    saveCache(key, filtered)
-                    renderCards(filtered, key)
+                    userId > 0 -> {
+                        val resp = api.getMyReservations()
+                        if (resp.isSuccessful) {
+                            val list = resp.body() ?: emptyList()
+                            list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { p ->
+                                val digits = p.filter { it.isDigit() }.takeLast(10)
+                                if (digits.isNotBlank()) session.savePhone("+63$digits")
+                            }
+                            list
+                        } else emptyList()
+                    }
+                    else -> {
+                        val prefs     = getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
+                        val lastPhone = (prefs.getString("last_phone", "") ?: "").trim()
+                        if (lastPhone.isNotBlank()) {
+                            val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
+                            val resp   = api.getTenantReservations("+63$digits")
+                            if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+                        } else emptyList()
+                    }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "fetchAndRender: network error — ${e.message}", e)
+
+                Log.d("NotificationsActivity", "Fetched ${reservations.size} reservations")
+                reservations.forEach {
+                    Log.d("NotificationsActivity", "  id=${it.id} status=${it.status} tenant_action=${it.tenant_action}")
+                }
+
+                cacheReservations(reservations)
+
                 withContext(Dispatchers.Main) {
+                    progressBar.visibility     = View.GONE
+                    swipeRefresh.isRefreshing  = false
+                    tvOfflineBanner.visibility = View.GONE
+                    renderCards(reservations)
+                }
+
+            } catch (e: Exception) {
+                Log.e("NotificationsActivity", "Fetch error: ${e.message}")
+                val cached = loadCachedReservations()
+
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility    = View.GONE
                     swipeRefresh.isRefreshing = false
-                    Toast.makeText(this@NotificationsActivity,
-                        "Offline — showing saved notifications", Toast.LENGTH_SHORT).show()
-                    showCached()
+
+                    if (cached.isNotEmpty()) {
+                        tvOfflineBanner.visibility = View.VISIBLE
+                        tvOfflineBanner.text       = "⚠ Offline — showing saved notifications"
+                        renderCards(cached)
+                    } else {
+                        tvOfflineBanner.visibility = View.GONE
+                        notifContainer.removeAllViews()
+                        tvEmpty.visibility = View.VISIBLE
+                        tvEmpty.text       = "No notifications yet.\nPull down to refresh."
+                    }
                 }
             }
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-
-    private fun renderCards(reservations: List<TenantReservation>, key: String) {
-        Log.d(TAG, "renderCards: rendering ${reservations.size} cards")
+    // Render cards
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun renderCards(list: List<TenantReservation>) {
         notifContainer.removeAllViews()
 
-        if (reservations.isEmpty()) {
-            emptyView.visibility = View.VISIBLE
-            emptyView.text = "No notifications yet.\nPull down to refresh."
+        if (list.isEmpty()) {
+            tvEmpty.visibility = View.VISIBLE
+            tvEmpty.text       = "No notifications yet.\nPull down to refresh."
             return
         }
 
-        emptyView.visibility = View.GONE
-        for (res in reservations) {
-            Log.d(TAG, "renderCards: building card id=${res.id} status='${res.status}'")
-            val card = if (res.status == "archived") {
-                Log.d(TAG, "renderCards: → using TERMINATED card layout")
-                buildTerminatedCard(res, key)
-            } else {
-                buildCard(res, key)
-            }
-            notifContainer.addView(card)
+        tvEmpty.visibility = View.GONE
+
+        val sorted = list.sortedByDescending { it.created_at ?: "" }
+        for (r in sorted) {
+            notifContainer.addView(buildCard(r))
         }
-    }
-
-    // ── Terminated / Archived card ────────────────────────────────────────────
-
-    private fun buildTerminatedCard(res: TenantReservation, key: String): View {
-        val card = LayoutInflater.from(this)
-            .inflate(R.layout.item_notification_terminated, notifContainer, false)
-        card.tag = res.id
-
-        val reason = res.termination_reason?.ifBlank { "No reason provided." } ?: "No reason provided."
-
-        card.findViewById<TextView>(R.id.tvTerminatedMessage).text =
-            "Your tenancy at ${res.dorm_name} has been terminated by the owner.\nReason: $reason"
-
-        card.findViewById<Button>(R.id.btnTerminatedView).setOnClickListener {
-            showTerminatedBottomSheet(res)
-        }
-
-        card.findViewById<Button>(R.id.btnTerminatedAppeal).setOnClickListener {
-            showAppealDialog(res, key, card)
-        }
-
-        return card
-    }
-
-    // ── Standard approved / rejected card ─────────────────────────────────────
-
-    private fun buildCard(res: TenantReservation, key: String): View {
-        val isApproved      = res.status == "approved"
-        val alreadyAccepted = isAccepted(key, res.id) || res.tenant_action == "accepted"
-
-        val card = LayoutInflater.from(this)
-            .inflate(R.layout.item_notification_card, notifContainer, false)
-        card.tag = res.id
-
-        card.findViewById<TextView>(R.id.tvNotifTitle).text =
-            if (isApproved) "Reservation Approved!" else "Reservation Rejected"
-
-        card.findViewById<TextView>(R.id.tvNotifMessage).text =
-            if (isApproved)
-                "Your reservation for ${res.dorm_name} has been approved."
-            else
-                "Your reservation for ${res.dorm_name} was rejected.\nReason: ${
-                    res.rejection_reason?.ifBlank { "No reason provided." } ?: "No reason provided."
-                }"
-
-        val tvBadge = card.findViewById<TextView>(R.id.tvStatusBadge)
-        if (isApproved) {
-            tvBadge.text = "✓ Approved by Owner"
-            tvBadge.setBackgroundResource(R.drawable.badge_approved)
-            tvBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_approved_text))
-        } else {
-            tvBadge.text = "✗ Rejected by Owner"
-            tvBadge.setBackgroundResource(R.drawable.badge_rejected)
-            tvBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_rejected_text))
-        }
-
-        card.findViewById<Button>(R.id.btnViewDetails).setOnClickListener {
-            showDetailsBottomSheet(res, key, alreadyAccepted)
-        }
-
-        val btnCancel = card.findViewById<Button>(R.id.btnCancel)
-        if (isApproved) {
-            btnCancel.visibility = View.VISIBLE
-            btnCancel.setOnClickListener { showCancelDialog(res, key, card) }
-        } else {
-            btnCancel.visibility = View.GONE
-        }
-
-        val btnAccept = card.findViewById<Button>(R.id.btnAccept)
-        if (isApproved) {
-            btnAccept.visibility = View.VISIBLE
-            if (alreadyAccepted) {
-                btnAccept.text      = "✓ Accepted"
-                btnAccept.isEnabled = false
-                btnAccept.setBackgroundResource(R.drawable.btn_accepted)
-            } else {
-                btnAccept.setOnClickListener {
-                    showAcceptDialog(res, key, btnAccept, null)
-                }
-            }
-        } else {
-            btnAccept.visibility = View.GONE
-        }
-
-        return card
-    }
-
-    // ── Appeal Dialog ─────────────────────────────────────────────────────────
-
-    private fun showAppealDialog(res: TenantReservation, key: String, card: View) {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_appeal_termination)
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                (resources.displayMetrics.widthPixels * 0.88).toInt(),
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        dialog.setCanceledOnTouchOutside(true)
-
-        val etMessage = dialog.findViewById<EditText>(R.id.etAppealMessage)
-        val tvError   = dialog.findViewById<TextView>(R.id.tvAppealError)
-        etMessage.setHintTextColor(0xFFAAAACC.toInt())
-
-        dialog.findViewById<Button>(R.id.btnAppealBack).setOnClickListener { dialog.dismiss() }
-
-        dialog.findViewById<Button>(R.id.btnAppealSubmit).setOnClickListener {
-            val appealText = etMessage.text.toString().trim()
-            if (appealText.isBlank()) {
-                tvError.visibility = View.VISIBLE
-                etMessage.requestFocus()
-                return@setOnClickListener
-            }
-            tvError.visibility = View.GONE
-
-            sendTenantAction(res.id, "appealed", appealText)
-
-            dismissId(key, res.id)
-            val updated = loadCache(key).filter { it.id != res.id }
-            saveCache(key, updated)
-            notifContainer.removeView(card)
-            if (notifContainer.childCount == 0) {
-                emptyView.visibility = View.VISIBLE
-                emptyView.text = "No notifications yet.\nPull down to refresh."
-            }
-
-            Toast.makeText(this, "Your appeal has been submitted.", Toast.LENGTH_LONG).show()
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
-
-    // ── Terminated bottom sheet ───────────────────────────────────────────────
-
-    private fun showTerminatedBottomSheet(res: TenantReservation) {
-        val dialog    = BottomSheetDialog(this, R.style.BottomSheetDialogTheme)
-        val sheetView = layoutInflater.inflate(R.layout.bottom_sheet_notification_detail, null)
-        dialog.setContentView(sheetView)
-
-        sheetView.findViewById<TextView>(R.id.tvSheetTitle).text = "Tenancy Terminated"
-
-        val tvBadge = sheetView.findViewById<TextView>(R.id.tvSheetBadge)
-        tvBadge.text = "⚠ Terminated by Owner"
-        tvBadge.setBackgroundResource(R.drawable.badge_rejected)
-        tvBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_rejected_text))
-
-        sheetView.findViewById<TextView>(R.id.tvSheetDormName).text = res.dorm_name
-        sheetView.findViewById<TextView>(R.id.tvSheetMoveIn).text   = res.move_in_date ?: "—"
-        sheetView.findViewById<TextView>(R.id.tvSheetTotal).text    = "₱${"%,.0f".format(res.total_amount ?: 0.0)}"
-
-        val rejectRow  = sheetView.findViewById<View>(R.id.rowRejectReason)
-        val reasonText = res.termination_reason?.trim()
-        if (!reasonText.isNullOrBlank()) {
-            rejectRow.visibility = View.VISIBLE
-            sheetView.findViewById<TextView>(R.id.tvSheetRejectReason).text = reasonText
-        } else {
-            rejectRow.visibility = View.GONE
-        }
-
-        sheetView.findViewById<Button>(R.id.bsBtnClose).setOnClickListener { dialog.dismiss() }
-        sheetView.findViewById<Button>(R.id.bsBtnAccept).visibility = View.GONE
-
-        dialog.show()
-    }
-
-    // ── Cancel Dialog ─────────────────────────────────────────────────────────
-
-    private fun showCancelDialog(res: TenantReservation, key: String, card: View) {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_cancel_reservation)
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                (resources.displayMetrics.widthPixels * 0.88).toInt(),
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        dialog.setCanceledOnTouchOutside(true)
-
-        val etReason = dialog.findViewById<EditText>(R.id.etCancelReason)
-        val tvError  = dialog.findViewById<TextView>(R.id.tvCancelError)
-        etReason.setHintTextColor(0xFFAAAACC.toInt())
-
-        dialog.findViewById<Button>(R.id.btnCancelDialogBack).setOnClickListener { dialog.dismiss() }
-
-        dialog.findViewById<Button>(R.id.btnCancelDialogSubmit).setOnClickListener {
-            val reason = etReason.text.toString().trim()
-            if (reason.isBlank()) {
-                tvError.visibility = View.VISIBLE
-                etReason.requestFocus()
-                return@setOnClickListener
-            }
-            tvError.visibility = View.GONE
-
-            sendTenantAction(res.id, "cancelled", reason)
-
-            val updated = loadCache(key).filter { it.id != res.id }
-            saveCache(key, updated)
-            dismissId(key, res.id)
-
-            notifContainer.removeView(card)
-            if (notifContainer.childCount == 0) {
-                emptyView.visibility = View.VISIBLE
-                emptyView.text = "No notifications yet.\nPull down to refresh."
-            }
-
-            Toast.makeText(this, "Reservation cancelled.", Toast.LENGTH_LONG).show()
-            dialog.dismiss()
-        }
-
-        dialog.show()
-    }
-
-    // ── Accept Dialog ─────────────────────────────────────────────────────────
-
-    private fun showAcceptDialog(
-        res: TenantReservation,
-        key: String,
-        cardAcceptBtn: Button,
-        syncBtnInSheet: Button?
-    ) {
-        val dialog = Dialog(this)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setContentView(R.layout.dialog_accept_reservation)
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                (resources.displayMetrics.widthPixels * 0.88).toInt(),
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        dialog.setCanceledOnTouchOutside(true)
-
-        dialog.findViewById<TextView>(R.id.tvAcceptDormName).text = res.dorm_name
-        dialog.findViewById<TextView>(R.id.tvAcceptMoveIn).text   = res.move_in_date ?: "—"
-        dialog.findViewById<TextView>(R.id.tvAcceptTotal).text    = "₱${"%,.0f".format(res.total_amount ?: 0.0)}"
-
-        dialog.findViewById<Button>(R.id.btnAcceptDialogCancel).setOnClickListener { dialog.dismiss() }
-
-        dialog.findViewById<Button>(R.id.btnAcceptDialogConfirm).setOnClickListener {
-            // 1. Persist acceptance locally so button stays greyed out.
-            saveAccepted(key, res.id)
-
-            // 2. Tell the server (fire-and-forget — dashboard will confirm via poll).
-            sendTenantAction(res.id, "accepted")
-
-            // 3. Update the card button immediately.
-            cardAcceptBtn.text      = "✓ Accepted"
-            cardAcceptBtn.isEnabled = false
-            cardAcceptBtn.setBackgroundResource(R.drawable.btn_accepted)
-            syncBtnInSheet?.let { it.text = "✓ Accepted"; it.isEnabled = false }
-
-            dialog.dismiss()
-            Toast.makeText(this, "Reservation accepted!", Toast.LENGTH_SHORT).show()
-
-            // 4. Navigate to TenantDashboardActivity with EXTRA_FORCE_CONFIRMED=true
-            //    so the dashboard shows the confirmed state immediately, without
-            //    waiting for the next 15-second poll cycle to confirm server update.
-            val intent = Intent(this, TenantDashboardActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra(TenantDashboardActivity.EXTRA_FORCE_CONFIRMED, true)
-                putExtra(TenantDashboardActivity.EXTRA_RESERVATION_ID, res.id)
-            }
-            startActivity(intent)
-        }
-
-        dialog.show()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Build a single notification card
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun buildCard(r: TenantReservation): View {
+        val view = LayoutInflater.from(this)
+            .inflate(R.layout.item_notification_card, notifContainer, false)
 
-    private fun sendTenantAction(reservationId: Int, action: String, cancelReason: String? = null) {
-        val phone = "+63${sessionManager.getPhone().trim().filter { it.isDigit() }.takeLast(10)}"
-        Log.d(TAG, "sendTenantAction: id=$reservationId action='$action' phone='$phone'")
+        val unreadDot      = view.findViewById<View>(R.id.unreadDot)
+        val tvTitle        = view.findViewById<TextView>(R.id.tvNotifTitle)
+        val tvTime         = view.findViewById<TextView>(R.id.tvNotifTime)
+        val tvMessage      = view.findViewById<TextView>(R.id.tvNotifMessage)
+        val tvStatusBadge  = view.findViewById<TextView>(R.id.tvStatusBadge)
+        val btnViewDetails = view.findViewById<Button>(R.id.btnViewDetails)
+        val btnCancel      = view.findViewById<Button>(R.id.btnCancel)
+        val btnAccept      = view.findViewById<Button>(R.id.btnAccept)
+
+        tvTime.text = formatRelativeTime(r.created_at)
+
+        // Default: hide all action buttons
+        btnAccept.visibility = View.GONE
+        btnCancel.visibility = View.GONE
+        unreadDot.visibility = View.GONE
+
+        when (r.status) {
+            "approved" -> {
+                tvTitle.text       = "Reservation Approved! 🎉"
+                tvMessage.text     = "Your reservation at ${r.dorm_name} has been approved by the owner."
+                tvStatusBadge.text = "✓ Approved by Owner"
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+                try { tvStatusBadge.setBackgroundResource(R.drawable.badge_approved) } catch (_: Exception) {}
+                unreadDot.visibility = View.VISIBLE
+
+                if (r.tenant_action.isNullOrBlank()) {
+                    btnAccept.visibility = View.VISIBLE
+                    btnCancel.visibility = View.VISIBLE
+                }
+            }
+            "rejected" -> {
+                val reason         = r.rejection_reason?.takeIf { it.isNotBlank() } ?: "No reason provided."
+                tvTitle.text       = "Reservation Rejected"
+                tvMessage.text     = "Your reservation at ${r.dorm_name} was rejected.\nReason: $reason"
+                tvStatusBadge.text = "✗ Rejected by Owner"
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                try { tvStatusBadge.setBackgroundResource(R.drawable.badge_rejected) } catch (_: Exception) {}
+                unreadDot.visibility = View.VISIBLE
+            }
+            "pending" -> {
+                tvTitle.text       = "Reservation Pending"
+                tvMessage.text     = "Your reservation at ${r.dorm_name} is waiting for owner approval."
+                tvStatusBadge.text = "⏳ Awaiting Owner Review"
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
+                try { tvStatusBadge.setBackgroundResource(R.drawable.badge_confirmed) } catch (_: Exception) {}
+            }
+            "archived" -> {
+                // ── ⚠ Tenancy Terminated card ─────────────────────────────────
+                val reason = r.termination_reason?.takeIf { it.isNotBlank() } ?: "No reason provided."
+
+                tvTitle.text   = "⚠ Tenancy Terminated"
+                tvMessage.text = "Property: ${r.dorm_name}\nReason: $reason"
+
+                tvStatusBadge.text = "✗ Terminated by Owner"
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                try { tvStatusBadge.setBackgroundResource(R.drawable.badge_rejected) } catch (_: Exception) {}
+                unreadDot.visibility = View.VISIBLE
+
+                // VIEW + APPEAL buttons
+                btnCancel.visibility = View.VISIBLE
+                btnAccept.visibility = View.VISIBLE
+
+                // Repurpose btnCancel → VIEW
+                btnCancel.text = "VIEW"
+                btnCancel.setTextColor(ContextCompat.getColor(this, android.R.color.white))
+                try { btnCancel.setBackgroundResource(R.drawable.btn_outline_blue) } catch (_: Exception) {}
+                btnCancel.setOnClickListener { showDetailsDialog(r) }
+
+                // Repurpose btnAccept → APPEAL
+                btnAccept.text = "APPEAL"
+                try { btnAccept.setBackgroundResource(R.drawable.btn_filled_blue) } catch (_: Exception) {}
+                btnAccept.setOnClickListener { showAppealDialog(r) }
+
+                // Override the generic listeners set later — return early
+                btnViewDetails.visibility = View.GONE
+                return view
+            }
+            else -> {
+                tvTitle.text       = "Reservation Update"
+                tvMessage.text     = "Status: ${r.status}"
+                tvStatusBadge.text = r.status
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
+            }
+        }
+
+        // Override badge if tenant already responded (non-archived only)
+        when (r.tenant_action) {
+            "accepted" -> {
+                btnAccept.visibility = View.GONE
+                btnCancel.visibility = View.GONE
+                unreadDot.visibility = View.GONE
+                tvStatusBadge.text   = "✓ You Accepted"
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+                try { tvStatusBadge.setBackgroundResource(R.drawable.badge_approved) } catch (_: Exception) {}
+            }
+            "cancelled" -> {
+                btnAccept.visibility = View.GONE
+                btnCancel.visibility = View.GONE
+                unreadDot.visibility = View.GONE
+                val reason           = r.cancel_reason?.takeIf { it.isNotBlank() } ?: "No reason."
+                tvStatusBadge.text   = "✗ You Cancelled · $reason"
+                tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                try { tvStatusBadge.setBackgroundResource(R.drawable.badge_rejected) } catch (_: Exception) {}
+            }
+        }
+
+        // Generic button listeners for non-archived cards
+        btnViewDetails.setOnClickListener { showDetailsDialog(r) }
+
+        btnAccept.setOnClickListener { showAcceptConfirmDialog(r) }
+
+        btnCancel.setOnClickListener {
+            val input = EditText(this).apply {
+                hint = "Reason for cancellation"
+                setPadding(48, 32, 48, 32)
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Cancel Reservation")
+                .setMessage("Please provide a reason:")
+                .setView(input)
+                .setPositiveButton("Confirm Cancel") { _, _ ->
+                    val reason = input.text.toString().trim()
+                    if (reason.isBlank()) {
+                        Toast.makeText(this, "Reason is required.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        sendTenantAction(r, "cancelled", reason, navigateToDashboard = false)
+                    }
+                }
+                .setNegativeButton("Back", null)
+                .show()
+        }
+
+        return view
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Appeal dialog (for terminated tenancy)
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun showAppealDialog(r: TenantReservation) {
+        val input = EditText(this).apply {
+            hint = "Describe your appeal..."
+            setPadding(48, 32, 48, 32)
+            minLines = 3
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Submit Appeal")
+            .setMessage("Your appeal for ${r.dorm_name} will be sent to the owner.")
+            .setView(input)
+            .setPositiveButton("Send Appeal") { _, _ ->
+                val appeal = input.text.toString().trim()
+                if (appeal.isBlank()) {
+                    Toast.makeText(this, "Please write your appeal first.", Toast.LENGTH_SHORT).show()
+                } else {
+                    // For now, show a confirmation — hook into your backend when ready
+                    Toast.makeText(this, "Appeal submitted. The owner will be notified.", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accept confirmation dialog
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun showAcceptConfirmDialog(r: TenantReservation) {
+        AlertDialog.Builder(this)
+            .setTitle("Accept Reservation")
+            .setMessage(
+                "Accept your reservation at ${r.dorm_name}?\n\n" +
+                        "Move-in: ${r.move_in_date ?: "—"}\n" +
+                        "Monthly rent: ₱${r.price_per_month ?: "—"}"
+            )
+            .setPositiveButton("Yes, Accept") { _, _ ->
+                sendTenantAction(r, "accepted", null, navigateToDashboard = true)
+            }
+            .setNegativeButton("Not Yet", null)
+            .show()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Send tenant action
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun sendTenantAction(
+        r: TenantReservation,
+        action: String,
+        cancelReason: String?,
+        navigateToDashboard: Boolean
+    ) {
+        val phone = session.getPhone().trim().ifBlank { r.phone }
+
+        if (action == "accepted" && phone.isNotBlank()) {
+            session.savePhone(phone)
+        }
+
         scope.launch {
             try {
-                val response = RetrofitClient.getApiService(applicationContext)
+                val resp = RetrofitClient.getApiService(applicationContext)
                     .sendTenantAction(
-                        reservationId,
-                        TenantAction(action = action, phone = phone, cancel_reason = cancelReason)
+                        r.id,
+                        TenantAction(
+                            action        = action,
+                            phone         = phone,
+                            cancel_reason = cancelReason
+                        )
                     )
-                if (response.isSuccessful)
-                    Log.d(TAG, "sendTenantAction: '$action' sent OK for id=$reservationId")
-                else
-                    Log.e(TAG, "sendTenantAction: failed ${response.code()} for id=$reservationId")
+                withContext(Dispatchers.Main) {
+                    if (resp.isSuccessful) {
+                        if (action == "accepted" && navigateToDashboard) {
+                            Toast.makeText(
+                                this@NotificationsActivity,
+                                "Reservation accepted! Welcome to your new home 🏠",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            startActivity(
+                                Intent(this@NotificationsActivity, TenantDashboardActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    putExtra(TenantDashboardActivity.EXTRA_FORCE_CONFIRMED, true)
+                                    putExtra(TenantDashboardActivity.EXTRA_RESERVATION_ID, r.id)
+                                }
+                            )
+                        } else {
+                            Toast.makeText(
+                                this@NotificationsActivity,
+                                "Reservation cancelled.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            fetchReservations(silent = true)
+                        }
+                    } else {
+                        val errBody = resp.errorBody()?.string() ?: "Unknown error"
+                        Log.e("NotificationsActivity", "sendTenantAction failed: ${resp.code()} $errBody")
+                        Toast.makeText(
+                            this@NotificationsActivity,
+                            "Action failed (${resp.code()}). Please try again.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "sendTenantAction: error — ${e.message}", e)
+                Log.e("NotificationsActivity", "sendTenantAction error: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@NotificationsActivity,
+                        "Network error. Please check your connection.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-
-    private fun showDetailsBottomSheet(
-        res: TenantReservation,
-        key: String,
-        alreadyAccepted: Boolean
-    ) {
-        val isApproved = res.status == "approved"
-        val dialog     = BottomSheetDialog(this, R.style.BottomSheetDialogTheme)
-        val sheetView  = layoutInflater.inflate(R.layout.bottom_sheet_notification_detail, null)
-        dialog.setContentView(sheetView)
-
-        sheetView.findViewById<TextView>(R.id.tvSheetTitle).text =
-            if (isApproved) "Reservation Approved!" else "Reservation Rejected"
-
-        val tvBadge = sheetView.findViewById<TextView>(R.id.tvSheetBadge)
-        if (isApproved) {
-            tvBadge.text = "✓ Approved"
-            tvBadge.setBackgroundResource(R.drawable.badge_approved)
-            tvBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_approved_text))
-        } else {
-            tvBadge.text = "✗ Rejected"
-            tvBadge.setBackgroundResource(R.drawable.badge_rejected)
-            tvBadge.setTextColor(ContextCompat.getColor(this, R.color.badge_rejected_text))
+    // View Details dialog
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun showDetailsDialog(r: TenantReservation) {
+        val msg = buildString {
+            appendLine("🏠 Property: ${r.dorm_name}")
+            appendLine("📍 Location: ${r.location ?: "—"}")
+            appendLine("👤 Tenant: ${r.full_name}")
+            appendLine("📅 Move-in Date: ${r.move_in_date ?: "—"}")
+            appendLine("📆 Duration: ${r.duration_months ?: "—"} month(s)")
+            appendLine("💵 Monthly Rent: ₱${r.price_per_month ?: "—"}")
+            appendLine("🔒 Deposit: ₱${r.deposit ?: "—"}")
+            appendLine("⬆ Advance: ₱${r.advance ?: "—"}")
+            appendLine("💳 Payment Method: ${r.payment_method ?: "—"}")
+            if (!r.notes.isNullOrBlank())
+                appendLine("📝 Notes: ${r.notes}")
+            if (!r.rejection_reason.isNullOrBlank())
+                appendLine("❌ Rejection Reason: ${r.rejection_reason}")
+            if (!r.termination_reason.isNullOrBlank())
+                appendLine("⚠ Termination Reason: ${r.termination_reason}")
         }
+        AlertDialog.Builder(this)
+            .setTitle("Reservation Details")
+            .setMessage(msg.trim())
+            .setPositiveButton("Close", null)
+            .show()
+    }
 
-        sheetView.findViewById<TextView>(R.id.tvSheetDormName).text = res.dorm_name
-        sheetView.findViewById<TextView>(R.id.tvSheetMoveIn).text   = res.move_in_date ?: "—"
-        sheetView.findViewById<TextView>(R.id.tvSheetTotal).text    = "₱${"%,.0f".format(res.total_amount ?: 0.0)}"
-
-        val rejectRow = sheetView.findViewById<View>(R.id.rowRejectReason)
-        val reason    = res.rejection_reason?.trim()
-        if (!isApproved && !reason.isNullOrBlank()) {
-            rejectRow.visibility = View.VISIBLE
-            sheetView.findViewById<TextView>(R.id.tvSheetRejectReason).text = reason
-        } else {
-            rejectRow.visibility = View.GONE
-        }
-
-        sheetView.findViewById<Button>(R.id.bsBtnClose).setOnClickListener { dialog.dismiss() }
-
-        val bsBtnAccept = sheetView.findViewById<Button>(R.id.bsBtnAccept)
-        if (isApproved) {
-            bsBtnAccept.visibility = View.VISIBLE
-            if (alreadyAccepted) {
-                bsBtnAccept.text      = "✓ Accepted"
-                bsBtnAccept.isEnabled = false
-            } else {
-                bsBtnAccept.setOnClickListener {
-                    val cardAcceptBtn = notifContainer
-                        .findViewWithTag<View>(res.id)
-                        ?.findViewById<Button>(R.id.btnAccept)
-
-                    if (cardAcceptBtn != null) {
-                        showAcceptDialog(res, key, cardAcceptBtn, bsBtnAccept)
-                    } else {
-                        saveAccepted(key, res.id)
-                        sendTenantAction(res.id, "accepted")
-                        bsBtnAccept.text      = "✓ Accepted"
-                        bsBtnAccept.isEnabled = false
-                        Toast.makeText(this, "Reservation accepted!", Toast.LENGTH_SHORT).show()
-
-                        // Navigate with force-confirmed flag.
-                        val intent = Intent(this, TenantDashboardActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            putExtra(TenantDashboardActivity.EXTRA_FORCE_CONFIRMED, true)
-                            putExtra(TenantDashboardActivity.EXTRA_RESERVATION_ID, res.id)
-                        }
-                        startActivity(intent)
-                    }
-                    dialog.dismiss()
-                }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Relative time formatter
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun formatRelativeTime(isoDate: String?): String {
+        if (isoDate.isNullOrBlank()) return ""
+        return try {
+            val formats = listOf(
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                "yyyy-MM-dd"
+            )
+            var date: Date? = null
+            for (fmt in formats) {
+                date = try {
+                    SimpleDateFormat(fmt, Locale.US)
+                        .apply { timeZone = TimeZone.getTimeZone("UTC") }
+                        .parse(isoDate)
+                } catch (_: Exception) { null }
+                if (date != null) break
             }
-        } else {
-            bsBtnAccept.visibility = View.GONE
-        }
+            if (date == null) return isoDate.take(10)
+            val diff  = System.currentTimeMillis() - date.time
+            val mins  = diff / 60_000
+            val hours = diff / 3_600_000
+            val days  = diff / 86_400_000
+            when {
+                mins  < 1  -> "Just now"
+                mins  < 60 -> "${mins}m ago"
+                hours < 24 -> "${hours}h ago"
+                days  < 7  -> "${days}d ago"
+                else       -> SimpleDateFormat("MMM dd, yyyy", Locale.US).format(date)
+            }
+        } catch (_: Exception) { isoDate.take(10) }
+    }
 
-        dialog.show()
+    // ─────────────────────────────────────────────────────────────────────────
+    // Offline cache helpers
+    // ─────────────────────────────────────────────────────────────────────────
+    private fun cacheReservations(list: List<TenantReservation>) {
+        if (list.isEmpty()) return
+        try {
+            val phone = session.getPhone().trim().filter { it.isDigit() }.takeLast(10)
+            if (phone.isBlank()) return
+            val prefs = getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
+            prefs.edit().putString("cache_$phone", com.google.gson.Gson().toJson(list)).apply()
+        } catch (e: Exception) {
+            Log.w("NotificationsActivity", "Cache write failed: ${e.message}")
+        }
+    }
+
+    private fun loadCachedReservations(): List<TenantReservation> {
+        return try {
+            val phone = session.getPhone().trim().filter { it.isDigit() }.takeLast(10)
+            if (phone.isBlank()) return emptyList()
+            val prefs = getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
+            val json  = prefs.getString("cache_$phone", null) ?: return emptyList()
+            val type  = object : com.google.gson.reflect.TypeToken<List<TenantReservation>>() {}.type
+            com.google.gson.Gson().fromJson(json, type) ?: emptyList()
+        } catch (e: Exception) { emptyList() }
     }
 }

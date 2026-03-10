@@ -1,11 +1,13 @@
 package com.firstapp.dormease.model
 
+// FILE PATH: app/src/main/java/com/firstapp/dormease/model/Dorm.kt
+
 import com.google.gson.annotations.SerializedName
 
 data class Dorm(
     val id: Int,
     @SerializedName("owner_id")
-    val ownerId: Int?,                  // ← NEW: links dorm to its owner/admin
+    val ownerId: Int?,
     @SerializedName("dorm_name")
     val dormName: String,
     val email: String,
@@ -20,5 +22,7 @@ data class Dorm(
     @SerializedName("photo_urls")
     val photoUrls: List<String>?,
     @SerializedName("owner_name")
-    val ownerName: String?
+    val ownerName: String?,
+    @SerializedName("occupied_count")
+    val occupiedCount: Int = 0,   // ← NEW: approved+accepted tenants from server
 )

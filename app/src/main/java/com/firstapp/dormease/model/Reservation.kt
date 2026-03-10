@@ -3,7 +3,7 @@ package com.firstapp.dormease.model
 data class Reservation(
     val dorm_name: String,
     val location: String,
-    val dorm_owner_id: Int,          // ← links reservation to the correct admin
+    val dorm_owner_id: Int,
     val full_name: String,
     val phone: String,
     val move_in_date: String,
@@ -13,7 +13,8 @@ data class Reservation(
     val advance: Int,
     val total_amount: Int,
     val notes: String,
-    val payment_method: String = "cash_on_move_in"
+    val payment_method: String = "cash_on_move_in",
+    val tenant_email: String? = null   // ← NEW
 )
 
 data class ReservationResponse(

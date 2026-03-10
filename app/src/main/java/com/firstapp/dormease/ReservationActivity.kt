@@ -1,5 +1,7 @@
 package com.firstapp.dormease.activity
 
+// FILE PATH: app/src/main/java/com/firstapp/dormease/activity/ReservationActivity.kt
+
 import android.app.DatePickerDialog
 import android.content.Context
 import android.os.Bundle
@@ -23,29 +25,30 @@ import java.util.Calendar
 
 class ReservationActivity : AppCompatActivity() {
 
-    private lateinit var btnBack: ImageButton
-    private lateinit var etFullName: TextInputEditText
-    private lateinit var etPhoneNumber: TextInputEditText
-    private lateinit var tilPhoneNumber: TextInputLayout
-    private lateinit var etMoveInDate: TextInputEditText
-    private lateinit var etDuration: TextInputEditText
-    private lateinit var etNotes: TextInputEditText
+    private lateinit var btnBack             : ImageButton
+    private lateinit var etFullName          : TextInputEditText
+    private lateinit var etEmail             : TextInputEditText
+    private lateinit var etPhoneNumber       : TextInputEditText
+    private lateinit var tilPhoneNumber      : TextInputLayout
+    private lateinit var etMoveInDate        : TextInputEditText
+    private lateinit var etDuration          : TextInputEditText
+    private lateinit var etNotes             : TextInputEditText
     private lateinit var btnSubmitReservation: MaterialButton
 
-    private lateinit var tvSummaryRentLabel: TextView
-    private lateinit var tvSummaryRentTotal: TextView
-    private lateinit var tvSummaryDeposit: TextView
-    private lateinit var tvSummaryAdvance: TextView
-    private lateinit var tvSummaryTotal: TextView
+    private lateinit var tvSummaryRentLabel  : TextView
+    private lateinit var tvSummaryRentTotal  : TextView
+    private lateinit var tvSummaryDeposit    : TextView
+    private lateinit var tvSummaryAdvance    : TextView
+    private lateinit var tvSummaryTotal      : TextView
 
     private lateinit var sessionManager: SessionManager
 
-    private var dormName: String = ""
-    private var dormLocation: String = ""
-    private var dormOwnerId: Int = 0
-    private var pricePerMonth: Int = 0
-    private var depositAmount: Int = 0
-    private var advanceAmount: Int = 0
+    private var dormName      : String = ""
+    private var dormLocation  : String = ""
+    private var dormOwnerId   : Int    = 0
+    private var pricePerMonth : Int    = 0
+    private var depositAmount : Int    = 0
+    private var advanceAmount : Int    = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +69,7 @@ class ReservationActivity : AppCompatActivity() {
 
         btnBack              = findViewById(R.id.btnBack)
         etFullName           = findViewById(R.id.etFullName)
+        etEmail              = findViewById(R.id.etEmail)
         etPhoneNumber        = findViewById(R.id.etPhoneNumber)
         tilPhoneNumber       = findViewById(R.id.tilPhoneNumber)
         etMoveInDate         = findViewById(R.id.etMoveInDate)
@@ -84,22 +88,49 @@ class ReservationActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvReserveDeposit).text  = "₱ $dormDeposit"
         findViewById<TextView>(R.id.tvReserveAdvance).text  = "₱ $dormAdvance"
 
-        etFullName.setText(sessionManager.getName())
+        // ── Auto-fill from session ─────────────────────────────────────────────
+        sessionManager.getName().takeIf  { it.isNotBlank() && it != "User" }
+            ?.let { etFullName.setText(it) }
+        sessionManager.getEmail().takeIf { it.isNotBlank() }
+            ?.let { etEmail.setText(it) }
+
+        // Phone is stored as "+639XXXXXXXXX" — strip "+63" so it fits the field
+        sessionManager.getPhone().takeIf { it.isNotBlank() }?.let { full ->
+            val local = full.removePrefix("+63").filter { it.isDigit() }
+            if (local.startsWith("9") && local.length == 10) {
+                etPhoneNumber.setText(local)
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────────
 
         tilPhoneNumber.prefixText = "+63"
         etPhoneNumber.filters = arrayOf(InputFilter.LengthFilter(10))
 
         etPhoneNumber.addTextChangedListener(object : TextWatcher {
+            private var isFormatting = false
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                val input      = s.toString()
-                val digitsOnly = input.filter { it.isDigit() }
-                if (input != digitsOnly) {
-                    etPhoneNumber.setText(digitsOnly)
-                    etPhoneNumber.setSelection(digitsOnly.length)
+                if (isFormatting) return
+                isFormatting = true
+
+                val input = s.toString()
+                var sanitized = input.filter { it.isDigit() }
+
+                if (sanitized.isNotEmpty() && sanitized[0] != '9') {
+                    sanitized = ""
+                    tilPhoneNumber.error = "Must start with 9 (e.g. 9XXXXXXXXX)"
+                } else {
+                    tilPhoneNumber.error = null
                 }
-                if (digitsOnly.isNotEmpty()) tilPhoneNumber.error = null
+
+                if (input != sanitized) {
+                    etPhoneNumber.setText(sanitized)
+                    etPhoneNumber.setSelection(sanitized.length)
+                }
+
+                isFormatting = false
             }
         })
 
@@ -146,6 +177,7 @@ class ReservationActivity : AppCompatActivity() {
 
     private fun validateForm(): Boolean {
         val fullName   = etFullName.text.toString().trim()
+        val email      = etEmail.text.toString().trim()
         val phone      = etPhoneNumber.text.toString().trim()
         val moveInDate = etMoveInDate.text.toString().trim()
         val duration   = etDuration.text.toString().trim()
@@ -155,18 +187,28 @@ class ReservationActivity : AppCompatActivity() {
             etFullName.requestFocus()
             return false
         }
+        if (email.isEmpty()) {
+            etEmail.error = "Email is required"
+            etEmail.requestFocus()
+            return false
+        }
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            etEmail.error = "Enter a valid email address"
+            etEmail.requestFocus()
+            return false
+        }
         if (phone.isEmpty()) {
             tilPhoneNumber.error = "Phone number is required"
             etPhoneNumber.requestFocus()
             return false
         }
-        if (phone.length != 10) {
-            tilPhoneNumber.error = "Phone number must be exactly 10 digits"
+        if (!phone.startsWith("9")) {
+            tilPhoneNumber.error = "Must start with 9 (e.g. 9XXXXXXXXX)"
             etPhoneNumber.requestFocus()
             return false
         }
-        if (!phone.startsWith("9")) {
-            tilPhoneNumber.error = "Must start with 9 (e.g. 9XXXXXXXXX)"
+        if (phone.length != 10) {
+            tilPhoneNumber.error = "Phone number must be exactly 10 digits"
             etPhoneNumber.requestFocus()
             return false
         }
@@ -189,6 +231,7 @@ class ReservationActivity : AppCompatActivity() {
         val total     = rentTotal + depositAmount + advanceAmount
 
         val fullPhone = "+63${etPhoneNumber.text.toString().trim()}"
+        val email     = etEmail.text.toString().trim()
 
         val reservation = Reservation(
             dorm_name       = dormName,
@@ -203,7 +246,8 @@ class ReservationActivity : AppCompatActivity() {
             advance         = advanceAmount,
             total_amount    = total,
             notes           = etNotes.text.toString().trim(),
-            payment_method  = "cash_on_move_in"
+            payment_method  = "cash_on_move_in",
+            tenant_email    = email
         )
 
         btnSubmitReservation.isEnabled = false
@@ -215,12 +259,8 @@ class ReservationActivity : AppCompatActivity() {
                     .submitReservation(reservation)
 
                 if (response.isSuccessful) {
-                    // Save phone so NotificationsActivity and DashboardActivity
-                    // can fetch this tenant's reservation status via REST
                     sessionManager.savePhone(fullPhone)
 
-                    // Also persist into NotificationState so LoginActivity can
-                    // restore the phone even if DormEaseSession is cleared on logout
                     getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
                         .edit()
                         .putString("last_phone", fullPhone.filter { it.isDigit() }.takeLast(10))

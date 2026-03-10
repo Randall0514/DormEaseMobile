@@ -70,10 +70,29 @@ class SessionManager(context: Context) {
             .putString(KEY_PHONE,    phone)
             .putString(KEY_ROLE,     role)
             .putInt(KEY_USER_ID,     userId)
-            .putBoolean(KEY_TERMINATED, false)  // reset terminated flag on new session
+            .putBoolean(KEY_TERMINATED, false)
             .apply()
     }
 
+    // ─── Individual save helpers (used during signup / profile edits) ─────────
+
+    /** Save full name — used after signup so reservation form can auto-fill it. */
+    fun saveFullName(name: String) {
+        sharedPreferences.edit().putString(KEY_NAME, name).apply()
+    }
+
+    /** Save email — used after signup so reservation form can auto-fill it. */
+    fun saveEmail(email: String) {
+        sharedPreferences.edit().putString(KEY_EMAIL, email).apply()
+    }
+
+    // ─── Phone helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Called ONLY when we have confirmed from the server that this phone belongs
+     * to an active (approved/pending) reservation.
+     * Writes to BOTH DormEaseSession AND NotificationState last_phone.
+     */
     fun savePhone(phone: String) {
         sharedPreferences.edit().putString(KEY_PHONE, phone).apply()
         val digits = phone.filter { it.isDigit() }.takeLast(10)
@@ -82,19 +101,21 @@ class SessionManager(context: Context) {
         }
     }
 
+    /**
+     * Called when the user edits their phone number manually.
+     * Saves to DormEaseSession ONLY — does NOT touch NotificationState last_phone.
+     */
+    fun savePhoneOnly(phone: String) {
+        sharedPreferences.edit().putString(KEY_PHONE, phone).apply()
+    }
+
     // ─── Termination ──────────────────────────────────────────────────────────
-    //
-    // Call this when the server confirms the tenant's reservation is archived.
-    // Clears the phone from BOTH SharedPreferences stores so HomeRouter and
-    // MainActivity stop routing back to TenantDashboardActivity.
-    //
+
     fun markTerminated() {
         sharedPreferences.edit()
             .putString(KEY_PHONE, "")
             .putBoolean(KEY_TERMINATED, true)
             .apply()
-        // Also wipe from NotificationState — this is the key that was causing
-        // the phone to survive across navigation and re-route to TenantDashboard.
         notificationState.edit()
             .remove("last_phone")
             .apply()
@@ -106,7 +127,7 @@ class SessionManager(context: Context) {
     // ─── Getters ──────────────────────────────────────────────────────────────
 
     fun getName()     : String = sharedPreferences.getString(KEY_NAME,     "User")   ?: "User"
-    fun getEmail()    : String = sharedPreferences.getString(KEY_EMAIL,    "—")      ?: "—"
+    fun getEmail()    : String = sharedPreferences.getString(KEY_EMAIL,    "")       ?: ""
     fun getUsername() : String = sharedPreferences.getString(KEY_USERNAME, "—")      ?: "—"
     fun getPhone()    : String = sharedPreferences.getString(KEY_PHONE,    "")       ?: ""
     fun getRole()     : String = sharedPreferences.getString(KEY_ROLE,     "Tenant") ?: "Tenant"

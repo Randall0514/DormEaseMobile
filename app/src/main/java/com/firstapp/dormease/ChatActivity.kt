@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.firstapp.dormease.model.SendMessageRequest
 import com.firstapp.dormease.network.MessageRepository
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.network.SocketManager
@@ -114,18 +115,32 @@ class ChatActivity : AppCompatActivity() {
 
     private val newMessageListener: (JSONObject) -> Unit = { data ->
         val senderId = data.optInt("senderId", -1)
+        // FIX: Only handle messages FROM the other person, never from ourselves.
+        // Our own messages are already shown optimistically when we send them.
         if (senderId == recipientId) {
             val text = data.optString("message", "").trim()
             if (text.isNotEmpty()) {
-                val msg = ChatMessage(
-                    text      = text,
-                    timestamp = System.currentTimeMillis(),
-                    isMine    = false
-                )
-                MessageRepository.addMessage(recipientId, msg)
-                runOnUiThread {
-                    adapter.addMessage(msg)
-                    scrollToBottom()
+                val incomingTimestamp = System.currentTimeMillis()
+
+                // FIX: Deduplicate — skip if we already have this exact message
+                // from the server within the last 3 seconds (prevents socket + HTTP echo)
+                val isDuplicate = MessageRepository.getMessages(recipientId).any { existing ->
+                    !existing.isMine &&
+                            existing.text == text &&
+                            Math.abs(existing.timestamp - incomingTimestamp) < 3000
+                }
+
+                if (!isDuplicate) {
+                    val msg = ChatMessage(
+                        text      = text,
+                        timestamp = incomingTimestamp,
+                        isMine    = false
+                    )
+                    MessageRepository.addMessage(recipientId, msg)
+                    runOnUiThread {
+                        adapter.addMessage(msg)
+                        scrollToBottom()
+                    }
                 }
             }
         }
@@ -133,7 +148,6 @@ class ChatActivity : AppCompatActivity() {
 
     private val connectionListener: (Boolean) -> Unit = { connected ->
         runOnUiThread {
-            // Show status but NEVER disable the send button — socket is optional
             tvChatStatus.text = if (connected) "Active now" else "Offline"
         }
     }
@@ -167,8 +181,11 @@ class ChatActivity : AppCompatActivity() {
         tvChatName.text   = recipientName
         tvChatStatus.text = if (SocketManager.isConnected()) "Active now" else "Offline"
 
-        // Send button is ALWAYS enabled — socket failure won't block sending
         btnSend.isEnabled = true
+
+        // Set avatar initial
+        val tvAvatar = findViewById<TextView?>(R.id.tvChatAvatar)
+        tvAvatar?.text = recipientName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
         // RecyclerView
         adapter = ChatAdapter(MessageRepository.getMessages(recipientId).toMutableList())
@@ -190,19 +207,13 @@ class ChatActivity : AppCompatActivity() {
         // ── Ensure socket is connected ────────────────────────────────────────
         val token = sessionManager.fetchAuthToken()
         if (token != null && !SocketManager.isConnected()) {
-            Log.d("ChatActivity", "Connecting socket with token")
             SocketManager.connect(token)
-        } else {
-            Log.d("ChatActivity", "Socket already connected: ${SocketManager.isConnected()}")
         }
-        // ──────────────────────────────────────────────────────────────────────
 
         SocketManager.addNewMessageListener(newMessageListener)
         SocketManager.addConnectionListener(connectionListener)
 
-        if (!MessageRepository.isHistoryLoaded(recipientId)) {
-            loadHistoryFromServer()
-        }
+        loadHistoryFromServer()
     }
 
     override fun onDestroy() {
@@ -234,7 +245,6 @@ class ChatActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.w("ChatActivity", "History load failed (non-fatal): ${e.message}")
-                // Don't show error toast — cached messages still visible
             }
         }
     }
@@ -272,19 +282,12 @@ class ChatActivity : AppCompatActivity() {
         val text = etMessage.text.toString().trim()
         if (text.isEmpty()) return
 
-        // ── Try socket first, silently ignore if not connected ────────────────
-        if (SocketManager.isConnected()) {
-            try {
-                SocketManager.sendMessage(recipientId, text)
-            } catch (e: Exception) {
-                Log.w("ChatActivity", "Socket send failed (non-fatal): ${e.message}")
-                Toast.makeText(this, "Real-time unavailable, message may be delayed", Toast.LENGTH_SHORT).show()
-            }
-        } else {
-            Toast.makeText(this, "Offline — message queued", Toast.LENGTH_SHORT).show()
-        }
+        // FIX: ONLY use HTTP to send. The HTTP endpoint persists the message AND
+        // notifies the recipient via WebSocket push. Do NOT call SocketManager.sendMessage()
+        // separately — that would cause the recipient to receive two notifications
+        // (one from the socket event + one from the HTTP endpoint's notifyUser call).
 
-        // Always add to UI and cache regardless of socket status
+        // Optimistically add to UI immediately so the sender sees it right away
         val msg = ChatMessage(
             text      = text,
             timestamp = System.currentTimeMillis(),
@@ -294,6 +297,31 @@ class ChatActivity : AppCompatActivity() {
         adapter.addMessage(msg)
         etMessage.setText("")
         scrollToBottom()
+
+        // Persist on server (also triggers real-time push to recipient via WebSocket)
+        sendViaHttp(text)
+    }
+
+    /**
+     * Persists the message on the server via POST /messages/send.
+     * The server saves it to the DB and pushes a `new_message` WebSocket event
+     * to the RECIPIENT only — so the sender never gets a duplicate.
+     */
+    private fun sendViaHttp(text: String) {
+        lifecycleScope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    RetrofitClient.getApiService(this@ChatActivity)
+                        .sendMessage(SendMessageRequest(recipientId, text))
+                }
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    Log.w("ChatActivity", "HTTP send failed ${response.code()}: $errorBody")
+                }
+            } catch (e: Exception) {
+                Log.w("ChatActivity", "HTTP send error (non-fatal): ${e.message}")
+            }
+        }
     }
 
     private fun scrollToBottom() {

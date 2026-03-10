@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- FILE PATH: app/src/main/res/layout/activity_profile.xml -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -184,103 +185,7 @@
 
             </androidx.cardview.widget.CardView>
 
-            <!-- Menu Items -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/btnPersonalInfo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
-                android:layout_marginBottom="8dp"
-                app:cardBackgroundColor="#FFFFFF">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:gravity="center_vertical">
-
-                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="👤" android:textSize="20sp" android:gravity="center"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Personal Information" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/btnLoginSecurity"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
-                android:layout_marginBottom="8dp"
-                app:cardBackgroundColor="#FFFFFF">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:gravity="center_vertical">
-
-                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="🔒" android:textSize="20sp" android:gravity="center"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Login &amp; security" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/btnPrivacy"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
-                android:layout_marginBottom="8dp"
-                app:cardBackgroundColor="#FFFFFF">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:gravity="center_vertical">
-
-                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="👌" android:textSize="20sp" android:gravity="center"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Privacy" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/btnPayment"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="2dp"
-                android:layout_marginBottom="8dp"
-                app:cardBackgroundColor="#FFFFFF">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:orientation="horizontal"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:gravity="center_vertical">
-
-                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="💳" android:textSize="20sp" android:gravity="center"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Payment" android:textSize="15sp" android:textColor="#000000" android:layout_marginStart="14dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#CCCCCC"/>
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
+            <!-- Log Out -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnLogout"
                 android:layout_width="match_parent"

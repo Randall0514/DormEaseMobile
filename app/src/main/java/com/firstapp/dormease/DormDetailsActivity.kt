@@ -3,16 +3,21 @@ package com.firstapp.dormease.activity
 // FILE PATH: app/src/main/java/com/firstapp/dormease/activity/DormDetailsActivity.kt
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.widget.CheckBox
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
+import com.firstapp.dormease.ChatActivity
 import com.firstapp.dormease.R
 import com.firstapp.dormease.network.Constants
 
@@ -26,33 +31,43 @@ class DormDetailsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_dorm_details)
 
         // ── Intent data ──────────────────────────────────────────────────────
-        val dormName  = intent.getStringExtra("DORM_NAME")     ?: "N/A"
-        val ownerName = intent.getStringExtra("DORM_OWNER")    ?: "N/A"
-        val phone     = intent.getStringExtra("DORM_PHONE")    ?: "N/A"
-        val location  = intent.getStringExtra("DORM_LOCATION") ?: "N/A"
-        val price     = intent.getStringExtra("DORM_PRICE")    ?: "N/A"
-        val deposit   = intent.getStringExtra("DORM_DEPOSIT")  ?: "N/A"
-        val advance   = intent.getStringExtra("DORM_ADVANCE")  ?: "N/A"
-        val roomsLeft = intent.getIntExtra("DORM_ROOMS_LEFT", 0)
-        val utilities = intent.getStringArrayListExtra("DORM_UTILITIES") ?: arrayListOf()
-        photoUrls     = intent.getStringArrayListExtra("DORM_PHOTO_URLS") ?: arrayListOf()
+        val dormName     = intent.getStringExtra("DORM_NAME")        ?: "N/A"
+        val ownerName    = intent.getStringExtra("DORM_OWNER")       ?: "N/A"
+        val ownerId      = intent.getIntExtra("DORM_OWNER_ID", -1)
+        val phone        = intent.getStringExtra("DORM_PHONE")       ?: "N/A"
+        val location     = intent.getStringExtra("DORM_LOCATION")    ?: "N/A"
+        val price        = intent.getStringExtra("DORM_PRICE")       ?: "N/A"
+        val deposit      = intent.getStringExtra("DORM_DEPOSIT")     ?: "N/A"
+        val advance      = intent.getStringExtra("DORM_ADVANCE")     ?: "N/A"
+        val totalBeds    = intent.getIntExtra("DORM_ROOMS_LEFT", 0)   // room_capacity
+        val occupiedBeds = intent.getIntExtra("DORM_OCCUPIED_BEDS", 0)
+        val utilities    = intent.getStringArrayListExtra("DORM_UTILITIES") ?: arrayListOf()
+        photoUrls        = intent.getStringArrayListExtra("DORM_PHOTO_URLS") ?: arrayListOf()
 
         // ── Views ────────────────────────────────────────────────────────────
-        val btnBack       = findViewById<ImageButton>(R.id.btnBack)
-        val ivDormImage   = findViewById<ImageView>(R.id.ivDormImage)
-        val btnPrevImage  = findViewById<ImageButton>(R.id.btnPrevImage)
-        val btnNextImage  = findViewById<ImageButton>(R.id.btnNextImage)
-        val llIndicator   = findViewById<LinearLayout>(R.id.llImageIndicator)
-        val tvDormName    = findViewById<TextView>(R.id.tvDormName)
-        val tvOwnerName   = findViewById<TextView>(R.id.tvOwnerName)
-        val tvPhoneNumber = findViewById<TextView>(R.id.tvPhoneNumber)
-        val tvLocation    = findViewById<TextView>(R.id.tvLocation)
-        val tvPrice       = findViewById<TextView>(R.id.tvPrice)
-        val tvDeposit     = findViewById<TextView>(R.id.tvDeposit)
-        val tvAdvance     = findViewById<TextView>(R.id.tvAdvance)
-        val tvRoomsLeft   = findViewById<TextView>(R.id.tvRoomsLeft)
-        val btnMessage    = findViewById<MaterialButton>(R.id.btnMessage)
-        val btnReserve    = findViewById<MaterialButton>(R.id.btnReserve)
+        val btnBack            = findViewById<ImageButton>(R.id.btnBack)
+        val ivDormImage        = findViewById<ImageView>(R.id.ivDormImage)
+        val btnPrevImage       = findViewById<ImageButton>(R.id.btnPrevImage)
+        val btnNextImage       = findViewById<ImageButton>(R.id.btnNextImage)
+        val llIndicator        = findViewById<LinearLayout>(R.id.llImageIndicator)
+        val tvDormName         = findViewById<TextView>(R.id.tvDormName)
+        val tvOwnerName        = findViewById<TextView>(R.id.tvOwnerName)
+        val tvPhoneNumber      = findViewById<TextView>(R.id.tvPhoneNumber)
+        val tvLocation         = findViewById<TextView>(R.id.tvLocation)
+        val tvPrice            = findViewById<TextView>(R.id.tvPrice)
+        val tvDeposit          = findViewById<TextView>(R.id.tvDeposit)
+        val tvAdvance          = findViewById<TextView>(R.id.tvAdvance)
+        val btnMessage         = findViewById<MaterialButton>(R.id.btnMessage)
+        val btnReserve         = findViewById<MaterialButton>(R.id.btnReserve)
+
+        // Capacity views
+        val tvAvailabilityBadge = findViewById<TextView>(R.id.tvAvailabilityBadge)
+        val tvOccupiedCount    = findViewById<TextView>(R.id.tvOccupiedCount)
+        val tvAvailableCount   = findViewById<TextView>(R.id.tvAvailableCount)
+        val tvTotalCount       = findViewById<TextView>(R.id.tvTotalCount)
+        val tvOccupancyPercent = findViewById<TextView>(R.id.tvOccupancyPercent)
+        val progressOccupancy  = findViewById<ProgressBar>(R.id.progressOccupancy)
+        val llBedGrid          = findViewById<LinearLayout>(R.id.llBedGrid)
 
         // Utilities
         val cbWater       = findViewById<CheckBox>(R.id.cbWater)
@@ -65,7 +80,7 @@ class DormDetailsActivity : AppCompatActivity() {
         val cbNoCurfew    = findViewById<CheckBox>(R.id.cbNoCurfew)
         val cbVisitors    = findViewById<CheckBox>(R.id.cbVisitors)
 
-        // ── Populate ─────────────────────────────────────────────────────────
+        // ── Populate basic info ───────────────────────────────────────────────
         tvDormName.text    = dormName
         tvOwnerName.text   = ownerName
         tvPhoneNumber.text = "+63 $phone"
@@ -73,7 +88,56 @@ class DormDetailsActivity : AppCompatActivity() {
         tvPrice.text       = "₱ $price/month"
         tvDeposit.text     = "Deposit: ₱$deposit"
         tvAdvance.text     = "Advance: ₱$advance"
-        tvRoomsLeft.text   = "$roomsLeft Rooms Capacity"
+
+        // ── Room Availability ─────────────────────────────────────────────────
+        val availableBeds = (totalBeds - occupiedBeds).coerceAtLeast(0)
+        val isFull        = availableBeds == 0
+
+        tvOccupiedCount.text  = occupiedBeds.toString()
+        tvAvailableCount.text = availableBeds.toString()
+        tvTotalCount.text     = totalBeds.toString()
+
+        val percent = if (totalBeds > 0) (occupiedBeds * 100 / totalBeds) else 0
+        tvOccupancyPercent.text = "$percent%"
+        progressOccupancy.progress = percent
+        progressOccupancy.progressTintList = android.content.res.ColorStateList.valueOf(
+            if (isFull) Color.parseColor("#E74C3C") else Color.parseColor("#2979FF")
+        )
+
+        if (isFull) {
+            tvAvailabilityBadge.text = "Full"
+            tvAvailabilityBadge.backgroundTintList =
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#E74C3C"))
+        } else {
+            tvAvailabilityBadge.text = "Available"
+            tvAvailabilityBadge.backgroundTintList =
+                android.content.res.ColorStateList.valueOf(Color.parseColor("#27AE60"))
+        }
+
+        buildBedGrid(llBedGrid, totalBeds, occupiedBeds)
+
+        if (isFull) {
+            btnReserve.isEnabled = false
+            btnReserve.alpha = 0.5f
+            btnReserve.text = "No Beds Available"
+        }
+
+        // ── Message button — open ChatActivity with the dorm owner ────────────
+        if (ownerId != -1) {
+            btnMessage.isEnabled = true
+            btnMessage.alpha = 1f
+            btnMessage.setOnClickListener {
+                val intent = Intent(this, ChatActivity::class.java).apply {
+                    putExtra("EXTRA_RECIPIENT_ID",   ownerId)
+                    putExtra("EXTRA_RECIPIENT_NAME", ownerName)
+                }
+                startActivity(intent)
+            }
+        } else {
+            // Owner ID not available — hide the button gracefully
+            btnMessage.isEnabled = false
+            btnMessage.alpha = 0.4f
+        }
 
         // ── Utilities ────────────────────────────────────────────────────────
         cbWater.isChecked       = utilities.contains("water")
@@ -123,8 +187,9 @@ class DormDetailsActivity : AppCompatActivity() {
 
         // ── Reserve ──────────────────────────────────────────────────────────
         btnReserve.setOnClickListener {
-            val intent = Intent(this, ReservationActivity::class.java).apply {
+            val intent = Intent(this, com.firstapp.dormease.activity.ReservationActivity::class.java).apply {
                 putExtra("DORM_NAME",     dormName)
+                putExtra("DORM_OWNER_ID", ownerId)
                 putExtra("DORM_LOCATION", location)
                 putExtra("DORM_PRICE",    price)
                 putExtra("DORM_DEPOSIT",  deposit)
@@ -132,6 +197,91 @@ class DormDetailsActivity : AppCompatActivity() {
             }
             startActivity(intent)
         }
+    }
+
+    private fun buildBedGrid(container: LinearLayout, total: Int, occupied: Int) {
+        container.removeAllViews()
+        if (total <= 0) return
+
+        val dp  = resources.displayMetrics.density
+        val slotSize  = (36 * dp).toInt()
+        val margin    = (4 * dp).toInt()
+        val maxSlots  = 20
+
+        if (total <= maxSlots) {
+            val cols = 5
+            var row: LinearLayout? = null
+
+            for (i in 0 until total) {
+                if (i % cols == 0) {
+                    row = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        val rowParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        rowParams.bottomMargin = margin
+                        layoutParams = rowParams
+                    }
+                    container.addView(row)
+                }
+
+                val isOccupied = i < occupied
+                val slot = TextView(this).apply {
+                    val p = LinearLayout.LayoutParams(slotSize, slotSize)
+                    p.setMargins(margin, margin, margin, margin)
+                    layoutParams = p
+                    gravity = Gravity.CENTER
+                    textSize = 8f
+                    text = if (isOccupied) "✕" else "✓"
+                    setTextColor(if (isOccupied) Color.WHITE else Color.parseColor("#27AE60"))
+                    setBackgroundResource(
+                        if (isOccupied) R.drawable.bed_occupied else R.drawable.bed_available
+                    )
+                }
+                row?.addView(slot)
+            }
+        } else {
+            val summary = TextView(this).apply {
+                val available = (total - occupied).coerceAtLeast(0)
+                text = "$occupied occupied  •  $available available  •  $total total beds"
+                textSize = 13f
+                setTextColor(Color.parseColor("#555555"))
+            }
+            container.addView(summary)
+        }
+
+        val legendLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val p = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            p.topMargin = (10 * resources.displayMetrics.density).toInt()
+            layoutParams = p
+        }
+
+        val legendDot = { color: Int, label: String ->
+            val dot = View(this).apply {
+                val dp2 = resources.displayMetrics.density
+                layoutParams = LinearLayout.LayoutParams((10 * dp2).toInt(), (10 * dp2).toInt()).also {
+                    it.marginEnd = (4 * dp2).toInt()
+                    it.marginStart = (8 * dp2).toInt()
+                }
+                setBackgroundColor(color)
+            }
+            val txt = TextView(this).apply {
+                text = label
+                textSize = 11f
+                setTextColor(Color.parseColor("#888888"))
+            }
+            listOf(dot, txt)
+        }
+
+        legendDot(Color.parseColor("#E74C3C"), "Occupied").forEach { legendLayout.addView(it) }
+        legendDot(Color.parseColor("#27AE60"), "Available").forEach { legendLayout.addView(it) }
+        container.addView(legendLayout)
     }
 
     private fun loadImage(imageView: ImageView, url: String) {

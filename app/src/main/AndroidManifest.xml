@@ -68,6 +68,22 @@
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop" />
 
+        <!-- Settings sub-screens -->
+        <activity
+            android:name=".activity.ChangePasswordActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.ChangeEmailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.HelpCenterActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.ContactUsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activity.AboutActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

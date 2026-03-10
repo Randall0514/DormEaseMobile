@@ -13,6 +13,8 @@ import com.firstapp.dormease.model.ReservationResponse
 import com.firstapp.dormease.model.TenantAction
 import com.firstapp.dormease.model.TenantActionResponse
 import com.firstapp.dormease.model.TenantReservation
+import com.firstapp.dormease.model.SendMessageRequest
+import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
@@ -25,52 +27,81 @@ import retrofit2.http.Query
 
 interface ApiService {
 
+    // ── Auth ──────────────────────────────────────────────────────────────────
+
+    @POST("auth/request-signup-otp")
+    suspend fun requestSignupOtp(
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
     @POST("auth/signup")
     fun signup(@Body request: SignupRequest): Call<ApiResponse>
 
     @POST("auth/login")
     fun login(@Body request: LoginRequest): Call<ApiResponse>
 
+    // ── Profile updates — all call PATCH /auth/me ─────────────────────────────
+    // Accepts any combination of: { fullName, username, email, password }
+
+    /** Update full name and/or username — Personal Info screen */
+    @PATCH("auth/me")
+    suspend fun updateProfile(
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
+    /** Change password: send { password: "newPassword" } */
+    @PATCH("auth/me")
+    suspend fun changePassword(
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
+    /** Change email: send { email: "new@email.com" } */
+    @PATCH("auth/me")
+    suspend fun changeEmail(
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
+    // ── Dorms ─────────────────────────────────────────────────────────────────
+
     @GET("dorms/available")
     fun getAvailableDorms(): Call<List<Dorm>>
 
-    // Submit reservation — will appear as notification on web dashboard
+    // ── Reservations ──────────────────────────────────────────────────────────
+
     @POST("reservations")
     suspend fun submitReservation(@Body reservation: Reservation): Response<ReservationResponse>
 
-    // Poll for the current tenant's reservation status updates using their phone number
     @GET("reservations/tenant")
     suspend fun getTenantReservations(
         @Query("phone") phone: String
     ): Response<List<TenantReservation>>
 
-    // ── NEW: fallback lookup using the auth token (no phone needed) ──────────
-    // Used by TenantDashboardActivity when no phone is saved locally.
-    // Calls GET /reservations/tenant/me — requires Bearer token in header
-    // (AuthInterceptor adds it automatically).
     @GET("reservations/tenant/me")
     suspend fun getMyReservations(): Response<List<TenantReservation>>
 
-    // Report back to the server when the tenant accepts or cancels
     @PATCH("reservations/{id}/tenant-action")
     suspend fun sendTenantAction(
         @Path("id") reservationId: Int,
         @Body action: TenantAction
     ): Response<TenantActionResponse>
 
-    // Load messaging contacts — only users with approved+accepted reservations
+    // ── Messages ──────────────────────────────────────────────────────────────
+
     @GET("messages/contacts")
     fun getMessageContacts(): Call<List<ContactUser>>
 
-    // Load full chat history with a specific contact (syncs with web)
     @GET("messages/{contactId}/history")
     suspend fun getMessageHistory(
         @Path("contactId") contactId: Int
     ): Response<List<MessageHistoryItem>>
 
-    // Delete (soft-delete) an entire conversation with a contact
     @DELETE("messages/{contactId}")
     suspend fun deleteConversation(
         @Path("contactId") contactId: Int
     ): Response<Void>
+
+    @POST("messages/send")
+    suspend fun sendMessage(
+        @Body body: SendMessageRequest
+    ): Response<ResponseBody>
 }
