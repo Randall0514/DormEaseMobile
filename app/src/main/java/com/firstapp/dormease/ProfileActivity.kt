@@ -1,15 +1,16 @@
 package com.firstapp.dormease
 
-// FILE PATH: app/src/main/java/com/firstapp/dormease/ProfileActivity.kt
-
 import android.content.Intent
 import android.os.Bundle
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.firstapp.dormease.activity.PersonalInfoActivity
 import com.firstapp.dormease.activity.TenantDashboardActivity
 import com.firstapp.dormease.network.SocketManager
+import com.firstapp.dormease.utils.NavBadgeHelper
 import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,7 @@ import kotlinx.coroutines.cancel
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var session: SessionManager
+    private val badgeHelper = NavBadgeHelper()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,7 +36,13 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        badgeHelper.attach(this)
         loadUserProfile()
+    }
+
+    override fun onPause() {
+        badgeHelper.detach()
+        super.onPause()
     }
 
     override fun onDestroy() {
@@ -58,19 +66,26 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+
         // ── Bottom Navigation ─────────────────────────────────────────────────
         findViewById<LinearLayout>(R.id.navHome).setOnClickListener {
             navigateHome()
         }
-        findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
+
+        findViewById<FrameLayout>(R.id.navMessages).setOnClickListener {
             startActivity(Intent(this, MessagesActivity::class.java))
             finish()
         }
+
         findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
             finish()
         }
-        // navProfile is current page — no action
+
+        // ── Personal Info ─────────────────────────────────────────────────────
+        findViewById<androidx.cardview.widget.CardView>(R.id.btnPersonalInfo).setOnClickListener {
+            startActivity(Intent(this, PersonalInfoActivity::class.java))
+        }
 
         // ── Log Out ───────────────────────────────────────────────────────────
         findViewById<androidx.cardview.widget.CardView>(R.id.btnLogout).setOnClickListener {

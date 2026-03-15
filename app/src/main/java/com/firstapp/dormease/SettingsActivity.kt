@@ -4,6 +4,7 @@ package com.firstapp.dormease
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
@@ -13,6 +14,7 @@ import com.firstapp.dormease.activity.ChangePasswordActivity
 import com.firstapp.dormease.activity.ContactUsActivity
 import com.firstapp.dormease.activity.HelpCenterActivity
 import com.firstapp.dormease.activity.TenantDashboardActivity
+import com.firstapp.dormease.utils.NavBadgeHelper
 import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ import kotlinx.coroutines.cancel
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var session: SessionManager
+    private val badgeHelper = NavBadgeHelper()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,28 +35,20 @@ class SettingsActivity : AppCompatActivity() {
         session = SessionManager(this)
 
         // ── Account Section ───────────────────────────────────────────────────
-        // Change Password
         findViewById<CardView>(R.id.btnChangePassword).setOnClickListener {
             startActivity(Intent(this, ChangePasswordActivity::class.java))
         }
-
-        // Change Email
         findViewById<CardView>(R.id.btnChangeEmail).setOnClickListener {
             startActivity(Intent(this, ChangeEmailActivity::class.java))
         }
 
         // ── Support Section ───────────────────────────────────────────────────
-        // Help Center
         findViewById<CardView>(R.id.btnHelpCenter).setOnClickListener {
             startActivity(Intent(this, HelpCenterActivity::class.java))
         }
-
-        // Contact Us
         findViewById<CardView>(R.id.btnContactUs).setOnClickListener {
             startActivity(Intent(this, ContactUsActivity::class.java))
         }
-
-        // About DormEase
         findViewById<CardView>(R.id.btnAbout).setOnClickListener {
             startActivity(Intent(this, AboutActivity::class.java))
         }
@@ -62,7 +57,8 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.navHome).setOnClickListener {
             navigateHome()
         }
-        findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
+        // FIX: navMessages is now a FrameLayout in the XML
+        findViewById<FrameLayout>(R.id.navMessages).setOnClickListener {
             startActivity(Intent(this, MessagesActivity::class.java))
             finish()
         }
@@ -73,18 +69,21 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        badgeHelper.attach(this)
+    }
+
+    override fun onPause() {
+        badgeHelper.detach()
+        super.onPause()
+    }
+
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
     }
 
-    /**
-     * Decide the correct Home screen without a network call.
-     *   1. terminated flag set → DashboardActivity
-     *   2. phone saved in SessionManager → TenantDashboardActivity
-     *   3. last_phone saved in NotificationState → TenantDashboardActivity
-     *   4. otherwise → DashboardActivity
-     */
     private fun navigateHome() {
         val target = resolveHomeTarget()
         startActivity(Intent(this, target).apply {

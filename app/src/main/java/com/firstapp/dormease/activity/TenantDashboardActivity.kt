@@ -23,6 +23,7 @@ import com.firstapp.dormease.R
 import com.firstapp.dormease.SettingsActivity
 import com.firstapp.dormease.model.TenantReservation
 import com.firstapp.dormease.network.RetrofitClient
+import com.firstapp.dormease.utils.NavBadgeHelper
 import com.firstapp.dormease.utils.SessionManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -45,6 +46,7 @@ class TenantDashboardActivity : AppCompatActivity() {
     }
 
     private lateinit var sessionManager: SessionManager
+    private val badgeHelper = NavBadgeHelper()
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
 
@@ -102,7 +104,7 @@ class TenantDashboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Always reload fresh data when returning from any sub-page
+        badgeHelper.attach(this)
         loadReservation()
         fetchNotificationCount()
         handler.removeCallbacks(pollRunnable)
@@ -111,6 +113,7 @@ class TenantDashboardActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        badgeHelper.detach()
         handler.removeCallbacks(pollRunnable)
     }
 
@@ -449,11 +452,10 @@ class TenantDashboardActivity : AppCompatActivity() {
     }
 
     private fun setupBottomNav() {
-        // Home — already here, no-op
         findViewById<LinearLayout>(R.id.navHome).setOnClickListener { /* already on home */ }
 
-        // Other tabs use REORDER_TO_FRONT to keep this activity alive in the stack
-        findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
+        // FIX: navMessages is now a FrameLayout in the XML
+        findViewById<FrameLayout>(R.id.navMessages).setOnClickListener {
             startActivity(Intent(this, MessagesActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             })

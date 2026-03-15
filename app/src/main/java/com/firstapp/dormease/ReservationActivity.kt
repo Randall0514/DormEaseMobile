@@ -88,19 +88,11 @@ class ReservationActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvReserveDeposit).text  = "₱ $dormDeposit"
         findViewById<TextView>(R.id.tvReserveAdvance).text  = "₱ $dormAdvance"
 
-        // ── Auto-fill from session ─────────────────────────────────────────────
+        // ── Auto-fill Full Name and Email from session ────────────────────────
         sessionManager.getName().takeIf  { it.isNotBlank() && it != "User" }
             ?.let { etFullName.setText(it) }
         sessionManager.getEmail().takeIf { it.isNotBlank() }
             ?.let { etEmail.setText(it) }
-
-        // Phone is stored as "+639XXXXXXXXX" — strip "+63" so it fits the field
-        sessionManager.getPhone().takeIf { it.isNotBlank() }?.let { full ->
-            val local = full.removePrefix("+63").filter { it.isDigit() }
-            if (local.startsWith("9") && local.length == 10) {
-                etPhoneNumber.setText(local)
-            }
-        }
         // ──────────────────────────────────────────────────────────────────────
 
         tilPhoneNumber.prefixText = "+63"
@@ -133,6 +125,19 @@ class ReservationActivity : AppCompatActivity() {
                 isFormatting = false
             }
         })
+
+        // ── Auto-fill Phone from session (must be AFTER TextWatcher is set) ───
+        // Use post{} so the view is fully laid out and the watcher won't block it
+        etPhoneNumber.post {
+            sessionManager.getPhone().takeIf { it.isNotBlank() }?.let { full ->
+                val local = full.removePrefix("+63").filter { it.isDigit() }
+                if (local.startsWith("9") && local.length == 10) {
+                    etPhoneNumber.setText(local)
+                    etPhoneNumber.setSelection(local.length)
+                }
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────────
 
         updatePaymentSummary(1)
 

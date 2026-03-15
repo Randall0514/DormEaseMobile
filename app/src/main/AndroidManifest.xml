@@ -84,6 +84,11 @@
         <activity
             android:name=".activity.AboutActivity"
             android:exported="false" />
+
+        <!-- Profile sub-screens -->
+        <activity
+            android:name=".activity.PersonalInfoActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

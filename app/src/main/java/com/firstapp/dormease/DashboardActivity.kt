@@ -1,5 +1,8 @@
 package com.firstapp.dormease
 
+// FILE PATH: app/src/main/java/com/firstapp/dormease/DashboardActivity.kt
+
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -10,12 +13,14 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.firstapp.dormease.adapter.DormAdapter
 import com.firstapp.dormease.model.Dorm
 import com.firstapp.dormease.network.RetrofitClient
+import com.firstapp.dormease.utils.NavBadgeHelper
 import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,13 +34,30 @@ import retrofit2.Response
 
 class DashboardActivity : AppCompatActivity() {
 
-    private lateinit var rvDorms: RecyclerView
-    private lateinit var dormAdapter: DormAdapter
+    private lateinit var rvDorms            : RecyclerView
+    private lateinit var dormAdapter        : DormAdapter
     private lateinit var tvNotificationBadge: TextView
-    private lateinit var sessionManager: SessionManager
+    private lateinit var sessionManager     : SessionManager
 
+    private val badgeHelper = NavBadgeHelper()
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
+
+    private val readPrefs by lazy {
+        getSharedPreferences("NotifReadState", Context.MODE_PRIVATE)
+    }
+
+    private val notifLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val hasUnread = result.data?.getBooleanExtra("has_unread", false) ?: false
+            val allRead   = result.data?.getBooleanExtra("all_read",   false) ?: false
+            if (!hasUnread || allRead) {
+                tvNotificationBadge.visibility = View.GONE
+            }
+        }
+    }
 
     private val badgeRunnable = object : Runnable {
         override fun run() {
@@ -49,8 +71,8 @@ class DashboardActivity : AppCompatActivity() {
         setContentView(R.layout.activity_dashboard)
         supportActionBar?.hide()
 
-        sessionManager      = SessionManager(this)
-        tvNotificationBadge = findViewById(R.id.tvNotificationBadge)
+        sessionManager       = SessionManager(this)
+        tvNotificationBadge  = findViewById(R.id.tvNotificationBadge)
 
         rvDorms = findViewById(R.id.rvDorms)
         rvDorms.layoutManager = LinearLayoutManager(this)
@@ -60,9 +82,11 @@ class DashboardActivity : AppCompatActivity() {
         fetchAvailableDorms()
 
         findViewById<FrameLayout>(R.id.notificationBellContainer).setOnClickListener {
-            startActivity(Intent(this, NotificationsActivity::class.java))
+            notifLauncher.launch(Intent(this, NotificationsActivity::class.java))
         }
-        findViewById<LinearLayout>(R.id.navMessages).setOnClickListener {
+
+        // FIX: navMessages is now a FrameLayout in the XML
+        findViewById<FrameLayout>(R.id.navMessages).setOnClickListener {
             startActivity(Intent(this, MessagesActivity::class.java))
         }
         findViewById<LinearLayout>(R.id.navSettings).setOnClickListener {
@@ -75,13 +99,14 @@ class DashboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        badgeHelper.attach(this)
         handler.post(badgeRunnable)
-        // Refresh dorm list so occupied counts are up to date when returning
         fetchAvailableDorms()
     }
 
     override fun onPause() {
         super.onPause()
+        badgeHelper.detach()
         handler.removeCallbacks(badgeRunnable)
     }
 
@@ -101,11 +126,20 @@ class DashboardActivity : AppCompatActivity() {
             try {
                 val api      = RetrofitClient.getApiService(applicationContext)
                 val response = api.getTenantReservations(phoneParam)
+
                 val count = if (response.isSuccessful) {
                     response.body()
-                        ?.count { it.status == "approved" || it.status == "rejected" }
-                        ?: 0
+                        ?.count { r ->
+                            val markedRead = readPrefs.getBoolean("read_${r.id}", false)
+                            if (markedRead) return@count false
+                            when (r.status) {
+                                "approved" -> r.tenant_action.isNullOrBlank()
+                                "rejected", "archived" -> true
+                                else -> false
+                            }
+                        } ?: 0
                 } else 0
+
                 withContext(Dispatchers.Main) { updateBadge(count) }
             } catch (e: Exception) {
                 Log.w("DashboardActivity", "Badge fetch failed: ${e.message}")
@@ -122,7 +156,6 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    // occupied_count is now returned directly by GET /dorms/available from the server
     private fun fetchAvailableDorms() {
         RetrofitClient.getApiService(this).getAvailableDorms()
             .enqueue(object : Callback<List<Dorm>> {

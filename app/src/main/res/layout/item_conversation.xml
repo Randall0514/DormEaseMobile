@@ -78,7 +78,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="end"
+            android:gravity="end|center_vertical"
             android:layout_marginStart="8dp">
 
             <TextView
@@ -90,11 +90,15 @@
                 android:textColor="#AAAAAA"
                 android:visibility="gone"/>
 
+            <!-- Red bubble badge — shows unread count, "9+" when over 9 -->
             <TextView
                 android:id="@+id/tvUnreadBadge"
-                android:layout_width="20dp"
+                android:layout_width="wrap_content"
                 android:layout_height="20dp"
+                android:minWidth="20dp"
                 android:gravity="center"
+                android:paddingStart="5dp"
+                android:paddingEnd="5dp"
                 android:textSize="11sp"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"

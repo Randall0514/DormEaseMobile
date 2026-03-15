@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FILE PATH: app/src/main/res/layout/activity_messages.xml -->
+<!-- FILE PATH: app/src/main/res/layout/activity_messages.xml                -->
+<!-- CHANGE: navMessages LinearLayout → FrameLayout wrapping the icon+label  -->
+<!--         + badge TextView tvNavMessagesBadge added on top                -->
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -39,28 +41,63 @@
                 android:layout_marginTop="4dp"/>
         </LinearLayout>
 
-        <LinearLayout
+        <!--
+            ══════════════════════════════════════════════════════════════════
+            MESSAGES NAV ITEM — FrameLayout so the badge overlays the icon
+            Use this same FrameLayout pattern in ALL other activities that
+            share this bottom nav (DashboardActivity, TenantDashboardActivity,
+            SettingsActivity, ProfileActivity, etc.)
+            ══════════════════════════════════════════════════════════════════
+        -->
+        <FrameLayout
             android:id="@+id/navMessages"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_messages"
-                android:tint="#FFFFFF"
-                android:contentDescription="Messages"/>
+            android:layout_weight="1">
+
+            <!-- Icon + label (centered inside the slot) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_nav_messages"
+                    android:tint="#FFFFFF"
+                    android:contentDescription="Messages"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Messages"
+                    android:textSize="12sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+
+            <!--
+                Red badge bubble — positioned top-center, offset right so it
+                sits on the top-right corner of the icon (like iOS badges).
+                NavBadgeHelper shows/hides this automatically.
+            -->
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Messages"
-                android:textSize="12sp"
+                android:id="@+id/tvNavMessagesBadge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|center_horizontal"
+                android:layout_marginStart="14dp"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:textSize="10sp"
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"
-                android:layout_marginTop="4dp"/>
-        </LinearLayout>
+                android:background="@drawable/nav_message_badge"
+                android:visibility="gone"
+                android:text="0"/>
+
+        </FrameLayout>
 
         <LinearLayout
             android:id="@+id/navSettings"

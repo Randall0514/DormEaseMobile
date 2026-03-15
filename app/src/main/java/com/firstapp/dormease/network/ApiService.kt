@@ -85,6 +85,13 @@ interface ApiService {
         @Body action: TenantAction
     ): Response<TenantActionResponse>
 
+    /** Submit a termination appeal — phone-based auth, no Bearer token needed */
+    @POST("reservations/{id}/appeal")
+    suspend fun submitAppeal(
+        @Path("id") reservationId: Int,
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
     // ── Messages ──────────────────────────────────────────────────────────────
 
     @GET("messages/contacts")

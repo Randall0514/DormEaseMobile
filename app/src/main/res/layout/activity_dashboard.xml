@@ -25,7 +25,6 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <!-- Notification Bell Icon (top right) -->
         <FrameLayout
             android:id="@+id/notificationBellContainer"
             android:layout_width="wrap_content"
@@ -121,31 +120,52 @@
 
         </LinearLayout>
 
-        <!-- Messages Tab -->
-        <LinearLayout
+        <!-- Messages Tab (with badge) -->
+        <FrameLayout
             android:id="@+id/navMessages"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
+            android:layout_weight="1">
 
-            <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:src="@drawable/ic_nav_messages"
-                android:tint="#B0CCEE"
-                android:contentDescription="Messages"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_nav_messages"
+                    android:tint="#B0CCEE"
+                    android:contentDescription="Messages"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Messages"
+                    android:textSize="12sp"
+                    android:textColor="#B0CCEE"
+                    android:layout_marginTop="4dp"/>
+
+            </LinearLayout>
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Messages"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"
-                android:layout_marginTop="4dp"/>
+                android:id="@+id/tvNavMessagesBadge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|center_horizontal"
+                android:layout_marginStart="14dp"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:background="@drawable/nav_message_badge"
+                android:visibility="gone"
+                android:text="0"/>
 
-        </LinearLayout>
+        </FrameLayout>
 
         <!-- Settings Tab -->
         <LinearLayout

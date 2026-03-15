@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FILE PATH: app/src/main/res/layout/activity_profile.xml -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -185,6 +184,51 @@
 
             </androidx.cardview.widget.CardView>
 
+            <!-- Personal Info Button -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/btnPersonalInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="#FFFFFF">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="👤"
+                        android:textSize="20sp"
+                        android:gravity="center"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Personal Info"
+                        android:textSize="15sp"
+                        android:textColor="#222222"
+                        android:layout_marginStart="14dp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textSize="24sp"
+                        android:textColor="#AAAAAA"/>
+
+                </LinearLayout>
+
+            </androidx.cardview.widget.CardView>
+
             <!-- Log Out -->
             <androidx.cardview.widget.CardView
                 android:id="@+id/btnLogout"
@@ -203,11 +247,32 @@
                     android:paddingEnd="16dp"
                     android:gravity="center_vertical">
 
-                    <TextView android:layout_width="28dp" android:layout_height="28dp" android:text="🚪" android:textSize="20sp" android:gravity="center"/>
-                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Log Out" android:textSize="15sp" android:textColor="#D32F2F" android:textStyle="bold" android:layout_marginStart="14dp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textSize="24sp" android:textColor="#FFAAAA"/>
+                    <TextView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="🚪"
+                        android:textSize="20sp"
+                        android:gravity="center"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Log Out"
+                        android:textSize="15sp"
+                        android:textColor="#D32F2F"
+                        android:textStyle="bold"
+                        android:layout_marginStart="14dp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textSize="24sp"
+                        android:textColor="#FFAAAA"/>
 
                 </LinearLayout>
+
             </androidx.cardview.widget.CardView>
 
         </LinearLayout>
@@ -234,23 +299,69 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_home" android:tint="#B0CCEE" android:contentDescription="Home"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Home" android:textSize="12sp" android:textColor="#B0CCEE" android:layout_marginTop="4dp"/>
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_nav_home"
+                android:tint="#B0CCEE"
+                android:contentDescription="Home"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Home"
+                android:textSize="12sp"
+                android:textColor="#B0CCEE"
+                android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
-        <LinearLayout
+        <!-- Messages Tab (with badge) -->
+        <FrameLayout
             android:id="@+id/navMessages"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
+            android:layout_weight="1">
 
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_messages" android:tint="#B0CCEE" android:contentDescription="Messages"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Messages" android:textSize="12sp" android:textColor="#B0CCEE" android:layout_marginTop="4dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center">
 
-        </LinearLayout>
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_nav_messages"
+                    android:tint="#B0CCEE"
+                    android:contentDescription="Messages"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Messages"
+                    android:textSize="12sp"
+                    android:textColor="#B0CCEE"
+                    android:layout_marginTop="4dp"/>
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvNavMessagesBadge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|center_horizontal"
+                android:layout_marginStart="14dp"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:background="@drawable/nav_message_badge"
+                android:visibility="gone"
+                android:text="0"/>
+
+        </FrameLayout>
 
         <LinearLayout
             android:id="@+id/navSettings"
@@ -260,8 +371,20 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_settings" android:tint="#B0CCEE" android:contentDescription="Settings"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Settings" android:textSize="12sp" android:textColor="#B0CCEE" android:layout_marginTop="4dp"/>
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_nav_settings"
+                android:tint="#B0CCEE"
+                android:contentDescription="Settings"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Settings"
+                android:textSize="12sp"
+                android:textColor="#B0CCEE"
+                android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 
@@ -274,8 +397,21 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_nav_profile" android:tint="#FFFFFF" android:contentDescription="Profile"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Profile" android:textSize="12sp" android:textColor="#FFFFFF" android:textStyle="bold" android:layout_marginTop="4dp"/>
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/ic_nav_profile"
+                android:tint="#FFFFFF"
+                android:contentDescription="Profile"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Profile"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:layout_marginTop="4dp"/>
 
         </LinearLayout>
 

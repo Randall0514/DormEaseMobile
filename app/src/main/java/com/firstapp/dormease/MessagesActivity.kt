@@ -1,6 +1,10 @@
 package com.firstapp.dormease
 
 // FILE PATH: app/src/main/java/com/firstapp/dormease/MessagesActivity.kt
+// CHANGES:
+//   1. Calls UnreadMessageCounter.increment(senderId) when a socket message arrives
+//   2. Calls UnreadMessageCounter.clearAll() in onResume (user is looking at messages list)
+//   3. Calls UnreadMessageCounter.clearFor(id) when a conversation is opened
 
 import android.content.Intent
 import android.os.Bundle
@@ -22,6 +26,7 @@ import com.firstapp.dormease.network.MessageRepository
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.network.SocketManager
 import com.firstapp.dormease.utils.SessionManager
+import com.firstapp.dormease.utils.UnreadMessageCounter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,7 +86,7 @@ class ConversationAdapter(
         }
 
         if (item.unreadCount > 0) {
-            holder.tvBadge.text       = item.unreadCount.toString()
+            holder.tvBadge.text       = if (item.unreadCount > 9) "9+" else item.unreadCount.toString()
             holder.tvBadge.visibility = View.VISIBLE
         } else {
             holder.tvBadge.visibility = View.GONE
@@ -166,6 +171,8 @@ class MessagesActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // NOTE: We do NOT clear the badge here — opening the list does NOT count
+        // as reading messages. The badge only clears when the user opens a specific chat.
         refreshPreviewsFromCache()
     }
 
@@ -175,15 +182,6 @@ class MessagesActivity : AppCompatActivity() {
         SocketManager.removeConnectionListener(connectionListener)
     }
 
-    /**
-     * Decide the correct Home screen without a network call.
-     *
-     * Rules (checked locally from SharedPreferences — instant, no API needed):
-     *   1. terminated flag set → DashboardActivity
-     *   2. phone saved in SessionManager → TenantDashboardActivity
-     *   3. last_phone saved in NotificationState → TenantDashboardActivity
-     *   4. otherwise → DashboardActivity
-     */
     private fun navigateHome() {
         val target = resolvHomeTarget()
         startActivity(Intent(this, target).apply {
@@ -200,7 +198,6 @@ class MessagesActivity : AppCompatActivity() {
         val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
         val lastPhone  = (notifPrefs.getString("last_phone", "") ?: "").trim()
         if (lastPhone.isNotBlank()) {
-            // Restore phone so future checks are instant
             val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
             if (digits.isNotBlank()) sessionManager.savePhone("+63$digits")
             return TenantDashboardActivity::class.java
@@ -275,6 +272,10 @@ class MessagesActivity : AppCompatActivity() {
             ChatMessage(text = text, timestamp = now, isMine = false)
         )
 
+        // ── Increment the per-sender unread count in the global counter ───────
+        // (MessagesActivity is open but user may be looking at a different sender)
+        UnreadMessageCounter.increment(senderId)
+
         val existing = allConversations.find { it.userId == senderId }
         if (existing != null) {
             existing.preview      = text
@@ -308,7 +309,9 @@ class MessagesActivity : AppCompatActivity() {
     }
 
     private fun openChat(conversation: ConversationItem) {
+        // ── Clear per-sender unread when the user taps into the chat ──────────
         conversation.unreadCount = 0
+        UnreadMessageCounter.clearFor(conversation.userId)
         filterConversations(findViewById<EditText>(R.id.etSearch).text.toString())
         startActivity(Intent(this, ChatActivity::class.java).apply {
             putExtra("EXTRA_RECIPIENT_ID",   conversation.userId)
