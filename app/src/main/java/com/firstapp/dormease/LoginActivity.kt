@@ -6,7 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.util.Patterns
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.firstapp.dormease.activity.TenantDashboardActivity
 import com.firstapp.dormease.model.LoginRequest
@@ -98,10 +100,21 @@ class LoginActivity : AppCompatActivity() {
                         if (response.isSuccessful) {
                             val body = response.body()
 
-                            // Restore phone saved from a previous reservation
-                            val savedPhone = getSharedPreferences(
+                            val backendPhoneDigits = body?.user?.phoneNumber
+                                ?.filter { it.isDigit() }
+                                ?.takeLast(10)
+                                .orEmpty()
+                            val savedPhoneDigits = getSharedPreferences(
                                 "NotificationState", Context.MODE_PRIVATE
-                            ).getString("last_phone", "") ?: ""
+                            ).getString("last_phone", "")
+                                ?.filter { it.isDigit() }
+                                ?.takeLast(10)
+                                .orEmpty()
+                            val resolvedPhoneDigits = if (backendPhoneDigits.isNotBlank()) {
+                                backendPhoneDigits
+                            } else {
+                                savedPhoneDigits
+                            }
 
                             sessionManager.saveUserSession(
                                 token    = body?.token          ?: "",
@@ -110,7 +123,7 @@ class LoginActivity : AppCompatActivity() {
                                 username = body?.user?.username ?: identifier,
                                 // NOTE: saveUserSession resets the terminated flag,
                                 // so a fresh login always re-checks the server.
-                                phone    = if (savedPhone.isNotBlank()) "+63$savedPhone" else "",
+                                phone    = if (resolvedPhoneDigits.isNotBlank()) "+63$resolvedPhoneDigits" else "",
                                 role     = "Tenant",
                                 userId   = body?.user?.id       ?: -1
                             )
@@ -143,6 +156,9 @@ class LoginActivity : AppCompatActivity() {
         tvSignup.setOnClickListener {
             startActivity(Intent(this, SignupActivity::class.java))
         }
+
+        val tvForgotPassword = findViewById<TextView>(R.id.tvForgotPassword)
+        tvForgotPassword?.setOnClickListener { showForgotPasswordStep1() }
     }
 
     override fun onDestroy() {
@@ -160,40 +176,30 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        val rawPhone = sessionManager.getPhone().trim()
-        val userId   = sessionManager.getUserId()
-
-        Log.d("LoginActivity", "routeAfterLogin: phone='$rawPhone' userId=$userId")
-
-        when {
-            rawPhone.isNotBlank() -> checkReservationAndRoute(phoneParam = "+63${rawPhone.filter { it.isDigit() }.takeLast(10)}", byPhone = true)
-            userId > 0            -> checkReservationAndRoute(phoneParam = null, byPhone = false)
-            else                  -> goToDashboard()
-        }
+        val userId = sessionManager.getUserId()
+        Log.d("LoginActivity", "routeAfterLogin: userId=$userId")
+        checkReservationAndRoute()
     }
 
-    private fun checkReservationAndRoute(phoneParam: String?, byPhone: Boolean) {
+    private fun checkReservationAndRoute() {
         scope.launch {
             try {
                 val api = RetrofitClient.getApiService(applicationContext)
 
-                val reservations = if (byPhone && phoneParam != null) {
-                    val resp = api.getTenantReservations(phoneParam)
-                    if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
-                } else {
-                    val resp = api.getMyReservations()
-                    if (resp.isSuccessful) {
-                        val list = resp.body() ?: emptyList()
-                        list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
-                            val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
-                            if (digits.isNotBlank()) {
-                                sessionManager.savePhone("+63$digits")
-                                getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
-                                    .edit().putString("last_phone", digits).apply()
-                            }
+                val resp = api.getMyReservations()
+                val reservations = if (resp.isSuccessful) {
+                    val list = resp.body() ?: emptyList()
+                    list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
+                        val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
+                        if (digits.isNotBlank()) {
+                            sessionManager.savePhone("+63$digits")
+                            getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
+                                .edit().putString("last_phone", digits).apply()
                         }
-                        list
-                    } else emptyList()
+                    }
+                    list
+                } else {
+                    emptyList()
                 }
 
                 Log.d("LoginActivity", "Got ${reservations.size} reservations")
@@ -201,20 +207,27 @@ class LoginActivity : AppCompatActivity() {
                     Log.d("LoginActivity", "  id=${it.id} status=${it.status} tenant_action=${it.tenant_action}")
                 }
 
+                val hasActiveReservation = reservations.any {
+                    (it.status == "approved" || it.status == "pending") && it.tenant_action != "cancelled"
+                }
+
                 // ── Termination check ─────────────────────────────────────────
                 val isTerminated = reservations.isNotEmpty() &&
-                        reservations.none { it.status == "approved" || it.status == "pending" } &&
+                        !hasActiveReservation &&
                         reservations.any  { it.status == "archived" }
+
+                val archivedReservation = reservations.firstOrNull { it.status == "archived" }
 
                 if (isTerminated) {
                     Log.d("LoginActivity", "Terminated — calling markTerminated()")
-                    sessionManager.markTerminated()
+                    sessionManager.markTerminated(
+                        archivedReservation?.dorm_name,
+                        archivedReservation?.termination_reason
+                    )
                 }
 
                 // Only approved or pending = active
-                val hasApprovedOrPending = reservations.any {
-                    it.status == "approved" || it.status == "pending"
-                }
+                val hasApprovedOrPending = hasActiveReservation
 
                 withContext(Dispatchers.Main) {
                     if (hasApprovedOrPending) {
@@ -248,6 +261,202 @@ class LoginActivity : AppCompatActivity() {
             }
         )
         finish()
+    }
+
+    private fun showForgotPasswordStep1() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_forgot_password_email, null)
+        val etEmail = dialogView.findViewById<EditText>(R.id.etDialogEmail)
+        val tvError = dialogView.findViewById<TextView>(R.id.tvDialogEmailError)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnDialogEmailCancel)
+        val btnSend = dialogView.findViewById<Button>(R.id.btnDialogSendOtp)
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnSend.setOnClickListener {
+            val email = etEmail.text.toString().trim()
+            val errorMessage = when {
+                email.isBlank() -> "Please enter your email"
+                !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Please enter a valid email"
+                else -> null
+            }
+
+            if (errorMessage != null) {
+                tvError.text = errorMessage
+                tvError.visibility = android.view.View.VISIBLE
+                return@setOnClickListener
+            }
+
+            tvError.visibility = android.view.View.GONE
+            btnSend.isEnabled = false
+            btnSend.text = "Sending..."
+            dialog.dismiss()
+            sendForgotPasswordOtp(email)
+        }
+
+        dialog.setOnShowListener {
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        dialog.show()
+    }
+
+    private fun sendForgotPasswordOtp(email: String) {
+        scope.launch {
+            try {
+                val api = RetrofitClient.getApiService(applicationContext)
+                val response = api.requestPasswordReset(mapOf("email" to email))
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@LoginActivity, "OTP sent! Check your email.", Toast.LENGTH_SHORT).show()
+                        showForgotPasswordStep2(email)
+                    } else {
+                        val msg = response.errorBody()?.string()?.let {
+                            runCatching { org.json.JSONObject(it).getString("message") }.getOrNull()
+                        } ?: "Failed to send OTP"
+                        Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@LoginActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showForgotPasswordStep2(email: String) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_forgot_password_otp, null)
+        val tvSubtitle = dialogView.findViewById<TextView>(R.id.tvDialogOtpSubtitle)
+        val etOtp = dialogView.findViewById<EditText>(R.id.etDialogOtpCode)
+        val tvError = dialogView.findViewById<TextView>(R.id.tvDialogOtpError)
+        val tvResend = dialogView.findViewById<TextView>(R.id.tvDialogResendCode)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnDialogOtpCancel)
+        val btnVerify = dialogView.findViewById<Button>(R.id.btnDialogVerifyOtp)
+
+        tvSubtitle.text = "A 6-digit code was sent to $email."
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        tvResend.setOnClickListener {
+            dialog.dismiss()
+            sendForgotPasswordOtp(email)
+        }
+        btnVerify.setOnClickListener {
+            val otp = etOtp.text.toString().trim()
+            val errorMessage = when {
+                otp.length != 6 -> "OTP must be 6 digits"
+                !otp.all { it.isDigit() } -> "OTP must contain numbers only"
+                else -> null
+            }
+
+            if (errorMessage != null) {
+                tvError.text = errorMessage
+                tvError.visibility = android.view.View.VISIBLE
+                return@setOnClickListener
+            }
+
+            tvError.visibility = android.view.View.GONE
+            btnVerify.isEnabled = false
+            btnVerify.text = "Verifying..."
+            dialog.dismiss()
+            showForgotPasswordStep3(email, otp)
+        }
+
+        dialog.setOnShowListener {
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        dialog.show()
+    }
+
+    private fun showForgotPasswordStep3(email: String, otp: String) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_set_new_password, null)
+        val tvSubtitle = dialogView.findViewById<TextView>(R.id.tvDialogSubtitle)
+        val etNew = dialogView.findViewById<EditText>(R.id.etDialogNewPassword)
+        val etConfirm = dialogView.findViewById<EditText>(R.id.etDialogConfirmPassword)
+        val tvError = dialogView.findViewById<TextView>(R.id.tvDialogPasswordError)
+        val btnCancel = dialogView.findViewById<Button>(R.id.btnDialogCancel)
+        val btnReset = dialogView.findViewById<Button>(R.id.btnDialogResetPassword)
+
+        tvSubtitle.text = "Choose a new password for $email."
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnReset.setOnClickListener {
+            val newPwd = etNew.text.toString().trim()
+            val confirm = etConfirm.text.toString().trim()
+
+            val errorMessage = when {
+                newPwd.length < 6 -> "Password must be at least 6 characters"
+                newPwd != confirm -> "Passwords do not match"
+                else -> null
+            }
+
+            if (errorMessage != null) {
+                tvError.text = errorMessage
+                tvError.visibility = android.view.View.VISIBLE
+                return@setOnClickListener
+            }
+
+            tvError.visibility = android.view.View.GONE
+            btnReset.isEnabled = false
+            btnReset.text = "Resetting..."
+            dialog.dismiss()
+            doResetPassword(email, otp, newPwd)
+        }
+
+        dialog.setOnShowListener {
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        dialog.show()
+    }
+
+    private fun doResetPassword(email: String, otp: String, newPassword: String) {
+        scope.launch {
+            try {
+                val api = RetrofitClient.getApiService(applicationContext)
+                val response = api.resetPassword(
+                    mapOf("email" to email, "otp" to otp, "newPassword" to newPassword)
+                )
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(
+                            this@LoginActivity,
+                            "Password reset successful. Please log in.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        val body = response.errorBody()?.string()
+                        val msg = body?.let {
+                            runCatching { org.json.JSONObject(it).getString("message") }.getOrNull()
+                        } ?: "Failed to reset password"
+
+                        if (msg.contains("otp", ignoreCase = true)) {
+                            Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
+                            showForgotPasswordStep2(email)
+                        } else {
+                            Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@LoginActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun goToDashboard() {

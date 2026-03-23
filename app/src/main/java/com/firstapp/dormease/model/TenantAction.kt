@@ -6,12 +6,14 @@ package com.firstapp.dormease.model
  * Request body sent to PATCH /reservations/{id}/tenant-action
  *
  * action        — "accepted" or "cancelled"
- * phone         — the tenant's phone (used server-side to verify ownership)
+ * email         — tenant email (primary lookup)
+ * phone         — optional legacy fallback lookup
  * cancel_reason — required when action == "cancelled", null otherwise
  */
 data class TenantAction(
     val action: String,
-    val phone: String,
+    val email: String? = null,
+    val phone: String? = null,
     val cancel_reason: String? = null
 )
 

@@ -25,6 +25,9 @@ class SessionManager(context: Context) {
         private const val KEY_ROLE         = "user_role"
         private const val KEY_USER_ID      = "user_id"
         private const val KEY_TERMINATED   = "account_terminated"
+        private const val KEY_TERM_DORM    = "terminated_dorm_name"
+        private const val KEY_TERM_REASON  = "terminated_reason"
+        private const val KEY_TERM_PENDING = "terminated_notice_pending"
     }
 
     // ─── Token ────────────────────────────────────────────────────────────────
@@ -111,14 +114,31 @@ class SessionManager(context: Context) {
 
     // ─── Termination ──────────────────────────────────────────────────────────
 
-    fun markTerminated() {
+    fun markTerminated(dormName: String? = null, reason: String? = null) {
         sharedPreferences.edit()
             .putString(KEY_PHONE, "")
             .putBoolean(KEY_TERMINATED, true)
+            .putString(KEY_TERM_DORM, dormName?.takeIf { it.isNotBlank() })
+            .putString(KEY_TERM_REASON, reason?.takeIf { it.isNotBlank() })
+            .putBoolean(KEY_TERM_PENDING, true)
             .apply()
         notificationState.edit()
             .remove("last_phone")
             .apply()
+    }
+
+    fun consumeTerminationNotice(): Pair<String, String>? {
+        if (!sharedPreferences.getBoolean(KEY_TERM_PENDING, false)) return null
+
+        val dormName = sharedPreferences.getString(KEY_TERM_DORM, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: "your dorm"
+        val reason = sharedPreferences.getString(KEY_TERM_REASON, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: "No reason was provided by the owner."
+
+        sharedPreferences.edit().putBoolean(KEY_TERM_PENDING, false).apply()
+        return dormName to reason
     }
 
     fun isTerminated(): Boolean =
@@ -148,6 +168,9 @@ class SessionManager(context: Context) {
             .remove(KEY_USER_ID)
             .remove(KEY_PHONE)
             .remove(KEY_TERMINATED)
+            .remove(KEY_TERM_DORM)
+            .remove(KEY_TERM_REASON)
+            .remove(KEY_TERM_PENDING)
             .apply()
 
         notificationState.edit()

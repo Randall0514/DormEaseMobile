@@ -21,10 +21,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.firstapp.dormease.activity.TenantDashboardActivity
 import com.firstapp.dormease.network.MessageRepository
 import com.firstapp.dormease.network.RetrofitClient
 import com.firstapp.dormease.network.SocketManager
+import com.firstapp.dormease.utils.HomeRouter
 import com.firstapp.dormease.utils.SessionManager
 import com.firstapp.dormease.utils.UnreadMessageCounter
 import kotlinx.coroutines.Dispatchers
@@ -183,27 +183,12 @@ class MessagesActivity : AppCompatActivity() {
     }
 
     private fun navigateHome() {
-        val target = resolvHomeTarget()
-        startActivity(Intent(this, target).apply {
-            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        })
-    }
-
-    private fun resolvHomeTarget(): Class<*> {
-        if (sessionManager.isTerminated()) return DashboardActivity::class.java
-
-        val phone = sessionManager.getPhone().trim()
-        if (phone.isNotBlank()) return TenantDashboardActivity::class.java
-
-        val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
-        val lastPhone  = (notifPrefs.getString("last_phone", "") ?: "").trim()
-        if (lastPhone.isNotBlank()) {
-            val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
-            if (digits.isNotBlank()) sessionManager.savePhone("+63$digits")
-            return TenantDashboardActivity::class.java
-        }
-
-        return DashboardActivity::class.java
+        HomeRouter.navigate(
+            context = this,
+            scope = lifecycleScope,
+            session = sessionManager,
+            intentFlags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        )
     }
 
     // ── Load contacts ─────────────────────────────────────────────────────────

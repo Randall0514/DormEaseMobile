@@ -3,10 +3,13 @@ package com.firstapp.dormease.activity
 // FILE PATH: app/src/main/java/com/firstapp/dormease/activity/DormDetailsActivity.kt
 
 import android.content.Intent
+import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -118,8 +121,12 @@ class DormDetailsActivity : AppCompatActivity() {
 
         if (isFull) {
             btnReserve.isEnabled = false
-            btnReserve.alpha = 0.5f
+            btnReserve.alpha = 0.75f
             btnReserve.text = "No Beds Available"
+            btnReserve.isAllCaps = false
+            btnReserve.icon = null
+            btnReserve.maxLines = 2
+            btnReserve.ellipsize = TextUtils.TruncateAt.END
         }
 
         // ── Message button — open ChatActivity with the dorm owner ────────────
@@ -159,6 +166,9 @@ class DormDetailsActivity : AppCompatActivity() {
             loadImage(ivDormImage, photoUrls[currentImageIndex])
             updateIndicators(llIndicator, photoUrls.size, currentImageIndex)
             updateNavButtons(btnPrevImage, btnNextImage)
+            ivDormImage.setOnClickListener {
+                showExpandedImage(photoUrls[currentImageIndex])
+            }
 
             btnPrevImage.setOnClickListener {
                 if (currentImageIndex > 0) {
@@ -291,6 +301,57 @@ class DormDetailsActivity : AppCompatActivity() {
             .error(R.drawable.dorm_image_placeholder)
             .centerCrop()
             .into(imageView)
+    }
+
+    private fun showExpandedImage(url: String) {
+        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val root = FrameLayout(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.BLACK)
+            setOnClickListener { dialog.dismiss() }
+        }
+
+        val fullImage = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            ).also { it.gravity = Gravity.CENTER }
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
+            setOnClickListener { }
+        }
+
+        Glide.with(this)
+            .load(Constants.SOCKET_URL + url)
+            .placeholder(R.drawable.dorm_image_placeholder)
+            .error(R.drawable.dorm_image_placeholder)
+            .fitCenter()
+            .into(fullImage)
+
+        root.addView(fullImage)
+
+        val closeButton = ImageButton(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).also {
+                it.gravity = Gravity.TOP or Gravity.END
+                val margin = (16 * resources.displayMetrics.density).toInt()
+                it.setMargins(margin, margin, margin, margin)
+            }
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            contentDescription = "Close image preview"
+            background = null
+            setColorFilter(Color.WHITE)
+            setOnClickListener { dialog.dismiss() }
+        }
+
+        root.addView(closeButton)
+        dialog.setContentView(root)
+        dialog.show()
     }
 
     private fun updateNavButtons(btnPrev: ImageButton, btnNext: ImageButton) {

@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -95,6 +96,8 @@ class DashboardActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.navProfile).setOnClickListener {
             startActivity(Intent(this, ProfileActivity::class.java))
         }
+
+        maybeShowTerminationNotice()
     }
 
     override fun onResume() {
@@ -115,21 +118,37 @@ class DashboardActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun maybeShowTerminationNotice() {
+        val notice = sessionManager.consumeTerminationNotice() ?: return
+        val (dormName, reason) = notice
+
+        AlertDialog.Builder(this)
+            .setTitle("Tenancy Terminated")
+            .setMessage(
+                "Your tenancy at $dormName has been terminated by the owner.\n\n" +
+                    "Reason:\n$reason\n\n" +
+                    "You can browse available dorms again."
+            )
+            .setCancelable(false)
+            .setPositiveButton("Browse Dorms", null)
+            .show()
+    }
+
     private fun fetchNotificationCount() {
-        val rawPhone = sessionManager.getPhone().trim()
-        if (rawPhone.isBlank()) { updateBadge(0); return }
-
-        val digits     = rawPhone.filter { it.isDigit() }.takeLast(10)
-        val phoneParam = "+63$digits"
-
         scope.launch {
             try {
                 val api      = RetrofitClient.getApiService(applicationContext)
-                val response = api.getTenantReservations(phoneParam)
+                val response = api.getMyReservations()
 
                 val count = if (response.isSuccessful) {
-                    response.body()
-                        ?.count { r ->
+                    val list = response.body() ?: emptyList()
+                    list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
+                        val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
+                        if (digits.isNotBlank()) {
+                            sessionManager.savePhone("+63$digits")
+                        }
+                    }
+                    list.count { r ->
                             val markedRead = readPrefs.getBoolean("read_${r.id}", false)
                             if (markedRead) return@count false
                             when (r.status) {
@@ -137,7 +156,7 @@ class DashboardActivity : AppCompatActivity() {
                                 "rejected", "archived" -> true
                                 else -> false
                             }
-                        } ?: 0
+                        }
                 } else 0
 
                 withContext(Dispatchers.Main) { updateBadge(count) }

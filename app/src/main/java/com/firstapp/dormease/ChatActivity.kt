@@ -2,7 +2,11 @@ package com.firstapp.dormease
 
 // FILE PATH: app/src/main/java/com/firstapp/dormease/ChatActivity.kt
 
+import android.content.res.ColorStateList
 import android.os.Bundle
+import android.graphics.Color
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -39,7 +43,8 @@ data class ChatMessage(
 // ─── Adapter ─────────────────────────────────────────────────────────────────
 
 class ChatAdapter(
-    private val messages: MutableList<ChatMessage>
+    private val messages: MutableList<ChatMessage>,
+    private val peerInitial: String
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -53,6 +58,7 @@ class ChatAdapter(
     }
 
     inner class TheirsVH(view: View) : RecyclerView.ViewHolder(view) {
+        val tvAvatar: TextView = view.findViewById(R.id.tvSenderAvatar)
         val tvText : TextView = view.findViewById(R.id.tvMessageText)
         val tvTime : TextView = view.findViewById(R.id.tvMessageTime)
     }
@@ -77,7 +83,11 @@ class ChatAdapter(
         val timeStr = fmt.format(Date(msg.timestamp))
         when (holder) {
             is MineVH   -> { holder.tvText.text = msg.text; holder.tvTime.text = timeStr }
-            is TheirsVH -> { holder.tvText.text = msg.text; holder.tvTime.text = timeStr }
+            is TheirsVH -> {
+                holder.tvAvatar.text = peerInitial
+                holder.tvText.text = msg.text
+                holder.tvTime.text = timeStr
+            }
         }
     }
 
@@ -102,6 +112,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var btnSend       : ImageButton
     private lateinit var tvChatName    : TextView
     private lateinit var tvChatStatus  : TextView
+    private lateinit var vChatStatusDot: View
     private lateinit var btnBack       : ImageButton
     private lateinit var btnDelete     : ImageButton
 
@@ -148,7 +159,7 @@ class ChatActivity : AppCompatActivity() {
 
     private val connectionListener: (Boolean) -> Unit = { connected ->
         runOnUiThread {
-            tvChatStatus.text = if (connected) "Active now" else "Offline"
+            setPresenceState(connected)
         }
     }
 
@@ -175,20 +186,24 @@ class ChatActivity : AppCompatActivity() {
         btnSend       = findViewById(R.id.btnSend)
         tvChatName    = findViewById(R.id.tvChatName)
         tvChatStatus  = findViewById(R.id.tvChatStatus)
+        vChatStatusDot = findViewById(R.id.vChatStatusDot)
         btnBack       = findViewById(R.id.btnBack)
         btnDelete     = findViewById(R.id.btnDelete)
 
         tvChatName.text   = recipientName
-        tvChatStatus.text = if (SocketManager.isConnected()) "Active now" else "Offline"
+        setPresenceState(SocketManager.isConnected())
 
-        btnSend.isEnabled = true
+        btnSend.isEnabled = false
 
         // Set avatar initial
         val tvAvatar = findViewById<TextView?>(R.id.tvChatAvatar)
         tvAvatar?.text = recipientName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
         // RecyclerView
-        adapter = ChatAdapter(MessageRepository.getMessages(recipientId).toMutableList())
+        adapter = ChatAdapter(
+            MessageRepository.getMessages(recipientId).toMutableList(),
+            recipientName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+        )
         rvMessages.layoutManager = LinearLayoutManager(this).apply {
             stackFromEnd = true
         }
@@ -199,10 +214,20 @@ class ChatActivity : AppCompatActivity() {
         btnSend.setOnClickListener { sendMessage() }
         btnDelete.setOnClickListener { confirmDeleteConversation() }
 
+        etMessage.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                updateSendEnabledState(s)
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
         etMessage.setOnEditorActionListener { _, _, _ ->
             sendMessage()
             true
         }
+
+        updateSendEnabledState(etMessage.text)
 
         // ── Ensure socket is connected ────────────────────────────────────────
         val token = sessionManager.fetchAuthToken()
@@ -296,6 +321,7 @@ class ChatActivity : AppCompatActivity() {
         MessageRepository.addMessage(recipientId, msg)
         adapter.addMessage(msg)
         etMessage.setText("")
+        updateSendEnabledState(etMessage.text)
         scrollToBottom()
 
         // Persist on server (also triggers real-time push to recipient via WebSocket)
@@ -328,6 +354,22 @@ class ChatActivity : AppCompatActivity() {
         if (adapter.itemCount > 0) {
             rvMessages.smoothScrollToPosition(adapter.itemCount - 1)
         }
+    }
+
+    private fun updateSendEnabledState(text: CharSequence?) {
+        val enabled = !text.isNullOrBlank()
+        btnSend.isEnabled = enabled
+        btnSend.alpha = if (enabled) 1f else 0.72f
+    }
+
+    private fun setPresenceState(connected: Boolean) {
+        tvChatStatus.text = if (connected) "Active now" else "Offline"
+        tvChatStatus.setTextColor(
+            Color.parseColor(if (connected) "#AEE8C8" else "#D3DEEA")
+        )
+        vChatStatusDot.backgroundTintList = ColorStateList.valueOf(
+            Color.parseColor(if (connected) "#77D9A2" else "#90A2B8")
+        )
     }
 
     private fun parseIso(iso: String): Long {

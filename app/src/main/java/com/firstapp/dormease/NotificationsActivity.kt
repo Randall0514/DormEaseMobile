@@ -20,6 +20,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.firstapp.dormease.activity.TenantDashboardActivity
 import com.firstapp.dormease.model.TenantAction
 import com.firstapp.dormease.model.TenantReservation
@@ -40,6 +41,11 @@ import java.util.TimeZone
 
 class NotificationsActivity : AppCompatActivity() {
 
+    private data class NotificationTag(
+        val reservationId: Int,
+        val hiddenKey: String
+    )
+
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var session: SessionManager
@@ -55,6 +61,10 @@ class NotificationsActivity : AppCompatActivity() {
     // Value: true = user tapped "Mark as read"
     private val readPrefs by lazy {
         getSharedPreferences("NotifReadState", Context.MODE_PRIVATE)
+    }
+
+    private val hiddenPrefs by lazy {
+        getSharedPreferences("NotifHiddenState", Context.MODE_PRIVATE)
     }
 
     private val onReservationUpdate: (JSONObject) -> Unit = { data ->
@@ -84,19 +94,36 @@ class NotificationsActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.btnBack).setOnClickListener { finish() }
 
-        // "Clear all" — marks every currently rendered card as read, then clears UI
+        // "Clear all" — confirms intent, then persists hidden/read state.
         findViewById<TextView>(R.id.btnMarkAllRead).setOnClickListener {
-            val editor = readPrefs.edit()
-            for (i in 0 until notifContainer.childCount) {
-                val tag = notifContainer.getChildAt(i).tag
-                if (tag is Int) editor.putBoolean("read_$tag", true)
-            }
-            editor.apply()
-            notifContainer.removeAllViews()
-            tvEmpty.visibility = View.VISIBLE
-            tvEmpty.text       = "No notifications yet.\nPull down to refresh."
-            // Tell DashboardActivity to hide the badge
-            setResult(RESULT_OK, Intent().putExtra("all_read", true))
+            AlertDialog.Builder(this)
+                .setTitle("Clear all notifications?")
+                .setMessage("This will hide all current notifications on this device.")
+                .setPositiveButton("Yes, clear all") { _, _ ->
+                    val readEditor = readPrefs.edit()
+                    val hiddenEditor = hiddenPrefs.edit()
+
+                    for (i in 0 until notifContainer.childCount) {
+                        val tag = notifContainer.getChildAt(i).tag
+                        if (tag is NotificationTag) {
+                            readEditor.putBoolean("read_${tag.reservationId}", true)
+                            hiddenEditor.putBoolean(tag.hiddenKey, true)
+                        }
+                    }
+
+                    readEditor.apply()
+                    hiddenEditor.apply()
+
+                    notifContainer.removeAllViews()
+                    tvEmpty.visibility = View.VISIBLE
+                    tvEmpty.text = "No notifications yet.\nPull down to refresh."
+
+                    // Tell parent screens to hide badge immediately.
+                    setResult(RESULT_OK, Intent().putExtra("all_read", true))
+                    updateBadge(hasUnread = false)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         swipeRefresh.setOnRefreshListener { fetchReservations(silent = false) }
@@ -131,39 +158,19 @@ class NotificationsActivity : AppCompatActivity() {
             tvEmpty.visibility     = View.GONE
         }
 
-        val rawPhone = session.getPhone().trim()
-        val userId   = session.getUserId()
-
         scope.launch {
             try {
                 val api = RetrofitClient.getApiService(applicationContext)
-
-                val reservations: List<TenantReservation> = when {
-                    rawPhone.isNotBlank() -> {
-                        val digits = rawPhone.filter { it.isDigit() }.takeLast(10)
-                        val resp   = api.getTenantReservations("+63$digits")
-                        if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+                val resp = api.getMyReservations()
+                val reservations: List<TenantReservation> = if (resp.isSuccessful) {
+                    val list = resp.body() ?: emptyList()
+                    list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { p ->
+                        val digits = p.filter { it.isDigit() }.takeLast(10)
+                        if (digits.isNotBlank()) session.savePhone("+63$digits")
                     }
-                    userId > 0 -> {
-                        val resp = api.getMyReservations()
-                        if (resp.isSuccessful) {
-                            val list = resp.body() ?: emptyList()
-                            list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { p ->
-                                val digits = p.filter { it.isDigit() }.takeLast(10)
-                                if (digits.isNotBlank()) session.savePhone("+63$digits")
-                            }
-                            list
-                        } else emptyList()
-                    }
-                    else -> {
-                        val prefs     = getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
-                        val lastPhone = (prefs.getString("last_phone", "") ?: "").trim()
-                        if (lastPhone.isNotBlank()) {
-                            val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
-                            val resp   = api.getTenantReservations("+63$digits")
-                            if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
-                        } else emptyList()
-                    }
+                    list
+                } else {
+                    emptyList()
                 }
 
                 Log.d("NotificationsActivity", "Fetched ${reservations.size} reservations")
@@ -205,7 +212,11 @@ class NotificationsActivity : AppCompatActivity() {
     private fun renderCards(list: List<TenantReservation>) {
         notifContainer.removeAllViews()
 
-        if (list.isEmpty()) {
+        val visibleItems = list
+            .sortedByDescending { it.created_at ?: "" }
+            .filterNot { hiddenPrefs.getBoolean(hiddenKeyFor(it), false) }
+
+        if (visibleItems.isEmpty()) {
             tvEmpty.visibility = View.VISIBLE
             tvEmpty.text       = "No notifications yet.\nPull down to refresh."
             updateBadge(hasUnread = false)
@@ -213,11 +224,10 @@ class NotificationsActivity : AppCompatActivity() {
         }
 
         tvEmpty.visibility = View.GONE
-        val sorted = list.sortedByDescending { it.created_at ?: "" }
-        for (r in sorted) notifContainer.addView(buildCard(r))
+        for (r in visibleItems) notifContainer.addView(buildCard(r))
 
         // Update badge based on whether any unread dots are showing
-        updateBadge(hasUnread = sorted.any { isUnread(it) })
+        updateBadge(hasUnread = visibleItems.any { isUnread(it) })
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -231,12 +241,25 @@ class NotificationsActivity : AppCompatActivity() {
     // Whether a reservation is considered "unread"
     // ─────────────────────────────────────────────────────────────────────────
     private fun isUnread(r: TenantReservation): Boolean {
-        if (readPrefs.getBoolean("read_${r.id}", false)) return false
-        return when (r.status) {
-            "approved" -> r.tenant_action.isNullOrBlank()
-            "rejected", "archived" -> true
-            else -> false
-        }
+        return !readPrefs.getBoolean("read_${r.id}", false)
+    }
+
+    private fun hiddenKeyFor(r: TenantReservation): String {
+        val token = listOf(
+            r.id.toString(),
+            r.status,
+            r.tenant_action.orEmpty(),
+            r.tenant_action_at.orEmpty(),
+            r.rejection_reason.orEmpty(),
+            r.termination_reason.orEmpty(),
+            r.appeal_submitted_at.orEmpty(),
+            r.appeal_dismissed_at.orEmpty()
+        ).joinToString("|")
+        return "hidden_${token.hashCode()}"
+    }
+
+    private fun isAppealDismissed(r: TenantReservation): Boolean {
+        return !r.appeal_dismissed_at.isNullOrBlank()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -246,8 +269,11 @@ class NotificationsActivity : AppCompatActivity() {
         val view = LayoutInflater.from(this)
             .inflate(R.layout.item_notification_card, notifContainer, false)
 
-        // Tag the view with reservation ID so "Clear all" can mark it read
-        view.tag = r.id
+        // Tag with both reservation id and a stable hidden key.
+        view.tag = NotificationTag(
+            reservationId = r.id,
+            hiddenKey = hiddenKeyFor(r)
+        )
 
         val unreadDot      = view.findViewById<View>(R.id.unreadDot)
         val tvTitle        = view.findViewById<TextView>(R.id.tvNotifTitle)
@@ -295,6 +321,9 @@ class NotificationsActivity : AppCompatActivity() {
                 tvStatusBadge.text = "⏳ Awaiting Owner Review"
                 tvStatusBadge.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
                 try { tvStatusBadge.setBackgroundResource(R.drawable.badge_confirmed) } catch (_: Exception) {}
+
+                // Tenant can cancel while request is still pending.
+                btnCancel.visibility = View.VISIBLE
             }
             "archived" -> {
                 val reason   = r.termination_reason?.takeIf { it.isNotBlank() } ?: "No reason provided."
@@ -310,8 +339,13 @@ class NotificationsActivity : AppCompatActivity() {
                 try { btnCancel.setBackgroundResource(R.drawable.btn_outline_blue) } catch (_: Exception) {}
                 btnCancel.setOnClickListener { showDetailsDialog(r) }
 
-                // ── Appeal button: label changes if appeal already submitted ──
-                if (!r.appeal_message.isNullOrBlank()) {
+                // Keep appeal closed after owner dismisses it.
+                if (isAppealDismissed(r)) {
+                    btnAccept.text = "APPEAL DISMISSED"
+                    try { btnAccept.setBackgroundResource(R.drawable.btn_outline_blue) } catch (_: Exception) {}
+                    btnAccept.isEnabled = false
+                    btnAccept.alpha = 0.6f
+                } else if (!r.appeal_message.isNullOrBlank()) {
                     btnAccept.text = "APPEAL SENT ✓"
                     try { btnAccept.setBackgroundResource(R.drawable.btn_outline_blue) } catch (_: Exception) {}
                     btnAccept.isEnabled = false
@@ -361,26 +395,7 @@ class NotificationsActivity : AppCompatActivity() {
 
         btnAccept.setOnClickListener { showAcceptConfirmDialog(r) }
 
-        btnCancel.setOnClickListener {
-            val input = EditText(this).apply {
-                hint = "Reason for cancellation"
-                setPadding(48, 32, 48, 32)
-            }
-            AlertDialog.Builder(this)
-                .setTitle("Cancel Reservation")
-                .setMessage("Please provide a reason:")
-                .setView(input)
-                .setPositiveButton("Confirm Cancel") { _, _ ->
-                    val reason = input.text.toString().trim()
-                    if (reason.isBlank()) {
-                        Toast.makeText(this, "Reason is required.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        sendTenantAction(r, "cancelled", reason, navigateToDashboard = false)
-                    }
-                }
-                .setNegativeButton("Back", null)
-                .show()
-        }
+        btnCancel.setOnClickListener { showCancelDialog(r) }
 
         applyReadState(r, unreadDot, btnMarkRead, view)
         return view
@@ -402,52 +417,72 @@ class NotificationsActivity : AppCompatActivity() {
         if (unread) {
             btnMarkRead.setOnClickListener {
                 // Persist read state
-                readPrefs.edit().putBoolean("read_${r.id}", true).apply()
+                readPrefs.edit().putBoolean("read_${r.id}", true).commit()
 
                 // Hide dot + button on this card
                 unreadDot.visibility   = View.GONE
                 btnMarkRead.visibility = View.GONE
 
-                // Check if any other cards still have an unread dot
-                val anyUnread = (0 until notifContainer.childCount).any { i ->
-                    notifContainer.getChildAt(i)
-                        .findViewById<View>(R.id.unreadDot)
-                        ?.visibility == View.VISIBLE
-                }
-                updateBadge(hasUnread = anyUnread)
+                // Recompute unread state across all visible cards.
+                updateBadge(hasUnread = hasAnyUnreadVisibleCards())
             }
         }
+    }
+
+    private fun hasAnyUnreadVisibleCards(): Boolean {
+        for (i in 0 until notifContainer.childCount) {
+            val tag = notifContainer.getChildAt(i).tag
+            if (tag is NotificationTag && !readPrefs.getBoolean("read_${tag.reservationId}", false)) {
+                return true
+            }
+        }
+        return false
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Appeal dialog — shows existing appeal read-only if already submitted
     // ─────────────────────────────────────────────────────────────────────────
     private fun showAppealDialog(r: TenantReservation) {
+        val appealDismissed = isAppealDismissed(r)
         val alreadySubmitted = !r.appeal_message.isNullOrBlank()
 
         val input = EditText(this).apply {
             hint     = "Describe your appeal..."
             setPadding(48, 32, 48, 32)
             minLines = 3
-            if (alreadySubmitted) {
+            if (appealDismissed) {
+                setText("Your previous appeal was dismissed by the owner.")
+                isEnabled = false
+            } else if (alreadySubmitted) {
                 setText(r.appeal_message)
                 isEnabled = false
             }
         }
 
         AlertDialog.Builder(this)
-            .setTitle(if (alreadySubmitted) "Appeal Already Submitted" else "Submit Appeal")
+            .setTitle(
+                when {
+                    appealDismissed -> "Appeal Unavailable"
+                    alreadySubmitted -> "Appeal Already Submitted"
+                    else -> "Submit Appeal"
+                }
+            )
             .setMessage(
-                if (alreadySubmitted)
+                when {
+                    appealDismissed ->
+                        "The owner already dismissed your previous appeal for ${r.dorm_name}. " +
+                                "You can no longer submit another appeal."
+                    alreadySubmitted ->
                     "You have already submitted an appeal for ${r.dorm_name}. " +
                             "The owner has been notified."
-                else
+                    else ->
                     "Your appeal for ${r.dorm_name} will be sent to the owner " +
                             "via notification and email."
+                }
             )
             .setView(input)
-            .setPositiveButton(if (alreadySubmitted) "Close" else "Send Appeal") { _, _ ->
-                if (alreadySubmitted) return@setPositiveButton
+            .setPositiveButton(if (appealDismissed || alreadySubmitted) "Close" else "Send Appeal") { _, _ ->
+                if (appealDismissed || alreadySubmitted) return@setPositiveButton
                 val appeal = input.text.toString().trim()
                 if (appeal.isBlank()) {
                     Toast.makeText(this, "Please write your appeal first.", Toast.LENGTH_SHORT).show()
@@ -456,7 +491,7 @@ class NotificationsActivity : AppCompatActivity() {
                 }
             }
             .apply {
-                if (!alreadySubmitted) setNegativeButton("Cancel", null)
+                if (!appealDismissed && !alreadySubmitted) setNegativeButton("Cancel", null)
             }
             .show()
     }
@@ -465,11 +500,12 @@ class NotificationsActivity : AppCompatActivity() {
     // Send appeal to server
     // ─────────────────────────────────────────────────────────────────────────
     private fun sendAppeal(r: TenantReservation, appealMessage: String) {
+        val email = session.getEmail().trim().ifBlank { r.tenant_email?.trim().orEmpty() }
         val phone = r.phone.ifBlank { session.getPhone() }
-        if (phone.isBlank()) {
+        if (email.isBlank() && phone.isBlank()) {
             Toast.makeText(
                 this,
-                "Phone number not found. Cannot submit appeal.",
+                "Tenant identity not found. Cannot submit appeal.",
                 Toast.LENGTH_SHORT
             ).show()
             return
@@ -486,10 +522,11 @@ class NotificationsActivity : AppCompatActivity() {
                 val resp = RetrofitClient.getApiService(applicationContext)
                     .submitAppeal(
                         r.id,
-                        mapOf(
-                            "phone"          to phone,
-                            "appeal_message" to appealMessage
-                        )
+                        buildMap {
+                            put("appeal_message", appealMessage)
+                            if (email.isNotBlank()) put("email", email)
+                            if (email.isBlank() && phone.isNotBlank()) put("phone", phone)
+                        }
                     )
 
                 withContext(Dispatchers.Main) {
@@ -500,13 +537,18 @@ class NotificationsActivity : AppCompatActivity() {
                             "✅ Appeal submitted! The owner has been notified.",
                             Toast.LENGTH_LONG
                         ).show()
-                        // Refresh cards so the APPEAL button disables itself
+                        // Refresh cards so the appeal button state updates immediately.
                         fetchReservations(silent = true)
                     } else {
-                        val errorBody = resp.errorBody()?.string() ?: "Unknown error"
+                        val errorBody = resp.errorBody()?.string().orEmpty()
+                        val message = if (resp.code() == 403) {
+                            "Appeal unavailable. The owner already dismissed your previous appeal."
+                        } else {
+                            errorBody.ifBlank { "Unknown error" }
+                        }
                         Toast.makeText(
                             this@NotificationsActivity,
-                            "Failed to submit appeal: $errorBody",
+                            "Failed to submit appeal: $message",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -551,6 +593,7 @@ class NotificationsActivity : AppCompatActivity() {
         cancelReason: String?,
         navigateToDashboard: Boolean
     ) {
+        val email = session.getEmail().trim().ifBlank { r.tenant_email?.trim().orEmpty() }
         val phone = session.getPhone().trim().ifBlank { r.phone }
         if (action == "accepted" && phone.isNotBlank()) session.savePhone(phone)
 
@@ -559,7 +602,12 @@ class NotificationsActivity : AppCompatActivity() {
                 val resp = RetrofitClient.getApiService(applicationContext)
                     .sendTenantAction(
                         r.id,
-                        TenantAction(action = action, phone = phone, cancel_reason = cancelReason)
+                        TenantAction(
+                            action = action,
+                            email = email.ifBlank { null },
+                            phone = phone.ifBlank { null },
+                            cancel_reason = cancelReason
+                        )
                     )
                 withContext(Dispatchers.Main) {
                     if (resp.isSuccessful) {
@@ -576,8 +624,19 @@ class NotificationsActivity : AppCompatActivity() {
                                     putExtra(TenantDashboardActivity.EXTRA_RESERVATION_ID, r.id)
                                 }
                             )
+                        } else if (action == "cancelled") {
+                            Toast.makeText(
+                                this@NotificationsActivity,
+                                "Reservation cancelled. You can browse available dorms again.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            startActivity(
+                                Intent(this@NotificationsActivity, DashboardActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                            )
+                            finish()
                         } else {
-                            Toast.makeText(this@NotificationsActivity, "Reservation cancelled.", Toast.LENGTH_SHORT).show()
                             fetchReservations(silent = true)
                         }
                     } else {
@@ -596,30 +655,141 @@ class NotificationsActivity : AppCompatActivity() {
         }
     }
 
+    private fun showCancelDialog(r: TenantReservation) {
+        val input = EditText(this).apply {
+            hint = "Reason for cancellation"
+            setPadding(48, 32, 48, 32)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Cancel Reservation")
+            .setMessage("Please provide a reason:")
+            .setView(input)
+            .setPositiveButton("Confirm Cancel") { _, _ ->
+                val reason = input.text.toString().trim()
+                if (reason.isBlank()) {
+                    Toast.makeText(this, "Reason is required.", Toast.LENGTH_SHORT).show()
+                } else {
+                    sendTenantAction(r, "cancelled", reason, navigateToDashboard = false)
+                }
+            }
+            .setNegativeButton("Back", null)
+            .show()
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // View Details dialog
     // ─────────────────────────────────────────────────────────────────────────
     private fun showDetailsDialog(r: TenantReservation) {
-        val msg = buildString {
-            appendLine("🏠 Property: ${r.dorm_name}")
-            appendLine("📍 Location: ${r.location ?: "—"}")
-            appendLine("👤 Tenant: ${r.full_name}")
-            appendLine("📅 Move-in Date: ${r.move_in_date ?: "—"}")
-            appendLine("📆 Duration: ${r.duration_months ?: "—"} month(s)")
-            appendLine("💵 Monthly Rent: ₱${r.price_per_month ?: "—"}")
-            appendLine("🔒 Deposit: ₱${r.deposit ?: "—"}")
-            appendLine("⬆ Advance: ₱${r.advance ?: "—"}")
-            appendLine("💳 Payment Method: ${r.payment_method ?: "—"}")
-            if (!r.notes.isNullOrBlank())              appendLine("📝 Notes: ${r.notes}")
-            if (!r.rejection_reason.isNullOrBlank())   appendLine("❌ Rejection Reason: ${r.rejection_reason}")
-            if (!r.termination_reason.isNullOrBlank()) appendLine("⚠ Termination Reason: ${r.termination_reason}")
-            if (!r.appeal_message.isNullOrBlank())     appendLine("📋 Your Appeal: ${r.appeal_message}")
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_notification_detail, null)
+        dialog.setContentView(view)
+
+        val tvTitle = view.findViewById<TextView>(R.id.tvSheetTitle)
+        val tvBadge = view.findViewById<TextView>(R.id.tvSheetBadge)
+        val tvDormName = view.findViewById<TextView>(R.id.tvSheetDormName)
+        val tvMoveIn = view.findViewById<TextView>(R.id.tvSheetMoveIn)
+        val tvTotal = view.findViewById<TextView>(R.id.tvSheetTotal)
+        val rowReason = view.findViewById<View>(R.id.rowRejectReason)
+        val tvReasonLabel = view.findViewById<TextView>(R.id.tvSheetReasonLabel)
+        val tvReason = view.findViewById<TextView>(R.id.tvSheetRejectReason)
+        val btnClose = view.findViewById<Button>(R.id.bsBtnClose)
+        val btnAction = view.findViewById<Button>(R.id.bsBtnAccept)
+
+        tvDormName.text = r.dorm_name.ifBlank { "—" }
+        tvMoveIn.text = (r.move_in_date ?: "—")
+        tvTotal.text = r.total_amount?.takeIf { it.isNotBlank() }
+            ?.let { "₱$it" }
+            ?: r.price_per_month?.takeIf { it.isNotBlank() }?.let { "₱$it / month" }
+            ?: "—"
+
+        rowReason.visibility = View.GONE
+        btnAction.visibility = View.GONE
+
+        when {
+            r.status == "archived" -> {
+                tvTitle.text = "Tenancy Terminated"
+                tvBadge.text = "Terminated by owner"
+                tvBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                tvBadge.setBackgroundResource(R.drawable.badge_rejected)
+
+                rowReason.visibility = View.VISIBLE
+                tvReasonLabel.text = "Termination reason"
+                tvReason.text = r.termination_reason?.takeIf { it.isNotBlank() }
+                    ?: "No reason was provided by the owner."
+
+                btnAction.visibility = View.VISIBLE
+                if (isAppealDismissed(r)) {
+                    btnAction.text = "Appeal dismissed"
+                    btnAction.isEnabled = false
+                    btnAction.alpha = 0.65f
+                    btnAction.setBackgroundResource(R.drawable.btn_outline_blue)
+                } else if (!r.appeal_message.isNullOrBlank()) {
+                    btnAction.text = "Appeal sent"
+                    btnAction.isEnabled = false
+                    btnAction.alpha = 0.65f
+                    btnAction.setBackgroundResource(R.drawable.btn_outline_blue)
+                } else {
+                    btnAction.text = "Submit appeal"
+                    btnAction.isEnabled = true
+                    btnAction.alpha = 1f
+                    btnAction.setBackgroundResource(R.drawable.btn_filled_blue)
+                    btnAction.setOnClickListener {
+                        dialog.dismiss()
+                        showAppealDialog(r)
+                    }
+                }
+            }
+
+            r.status == "rejected" -> {
+                tvTitle.text = "Reservation Rejected"
+                tvBadge.text = "Rejected by owner"
+                tvBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                tvBadge.setBackgroundResource(R.drawable.badge_rejected)
+
+                rowReason.visibility = View.VISIBLE
+                tvReasonLabel.text = "Rejection reason"
+                tvReason.text = r.rejection_reason?.takeIf { it.isNotBlank() }
+                    ?: "No reason was provided by the owner."
+            }
+
+            r.status == "approved" && r.tenant_action.isNullOrBlank() -> {
+                tvTitle.text = "Reservation Approved"
+                tvBadge.text = "Approved by owner"
+                tvBadge.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+                tvBadge.setBackgroundResource(R.drawable.badge_approved)
+
+                btnAction.visibility = View.VISIBLE
+                btnAction.text = "Accept"
+                btnAction.setBackgroundResource(R.drawable.btn_filled_blue)
+                btnAction.setOnClickListener {
+                    dialog.dismiss()
+                    showAcceptConfirmDialog(r)
+                }
+            }
+
+            r.status == "pending" -> {
+                tvTitle.text = "Reservation Pending"
+                tvBadge.text = "Awaiting owner review"
+                tvBadge.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray))
+                tvBadge.setBackgroundResource(R.drawable.badge_confirmed)
+
+                btnAction.visibility = View.VISIBLE
+                btnAction.text = "Cancel"
+                btnAction.setBackgroundResource(R.drawable.btn_filled_red)
+                btnAction.setOnClickListener {
+                    dialog.dismiss()
+                    showCancelDialog(r)
+                }
+            }
+
+            else -> {
+                tvTitle.text = "Reservation Details"
+                tvBadge.text = r.status.replaceFirstChar { it.uppercase() }
+            }
         }
-        AlertDialog.Builder(this)
-            .setTitle("Reservation Details")
-            .setMessage(msg.trim())
-            .setPositiveButton("Close", null)
-            .show()
+
+        btnClose.setOnClickListener { dialog.dismiss() }
+        dialog.show()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -661,19 +831,29 @@ class NotificationsActivity : AppCompatActivity() {
     private fun cacheReservations(list: List<TenantReservation>) {
         if (list.isEmpty()) return
         try {
+            val email = session.getEmail().trim().lowercase()
             val phone = session.getPhone().trim().filter { it.isDigit() }.takeLast(10)
-            if (phone.isBlank()) return
+            val cacheKey = when {
+                email.isNotBlank() -> "cache_email_$email"
+                phone.isNotBlank() -> "cache_phone_$phone"
+                else -> return
+            }
             getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
-                .edit().putString("cache_$phone", com.google.gson.Gson().toJson(list)).apply()
+                .edit().putString(cacheKey, com.google.gson.Gson().toJson(list)).apply()
         } catch (e: Exception) { Log.w("NotificationsActivity", "Cache write failed: ${e.message}") }
     }
 
     private fun loadCachedReservations(): List<TenantReservation> {
         return try {
+            val email = session.getEmail().trim().lowercase()
             val phone = session.getPhone().trim().filter { it.isDigit() }.takeLast(10)
-            if (phone.isBlank()) return emptyList()
+            val cacheKey = when {
+                email.isNotBlank() -> "cache_email_$email"
+                phone.isNotBlank() -> "cache_phone_$phone"
+                else -> return emptyList()
+            }
             val json = getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
-                .getString("cache_$phone", null) ?: return emptyList()
+                .getString(cacheKey, null) ?: return emptyList()
             val type = object : com.google.gson.reflect.TypeToken<List<TenantReservation>>() {}.type
             com.google.gson.Gson().fromJson(json, type) ?: emptyList()
         } catch (e: Exception) { emptyList() }

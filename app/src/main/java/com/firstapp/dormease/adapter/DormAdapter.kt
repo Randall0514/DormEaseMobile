@@ -2,6 +2,7 @@ package com.firstapp.dormease.adapter
 
 // FILE PATH: app/src/main/java/com/firstapp/dormease/adapter/DormAdapter.kt
 
+import android.content.Context
 import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
@@ -12,7 +13,9 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
+import com.firstapp.dormease.DashboardActivity
 import com.bumptech.glide.Glide
 import com.firstapp.dormease.R
 import com.firstapp.dormease.activity.DormDetailsActivity
@@ -63,6 +66,7 @@ class DormAdapter(private val dorms: List<Dorm>) :
         // Use server-supplied occupied count directly
         val occupiedBeds  = dorm.occupiedCount
         val availableBeds = (dorm.roomCapacity - occupiedBeds).coerceAtLeast(0)
+        val isFull        = availableBeds == 0
 
         holder.tvDormName.text    = dorm.dormName
         holder.tvOwnerName.text   = dorm.ownerName ?: "Unknown Owner"
@@ -71,6 +75,8 @@ class DormAdapter(private val dorms: List<Dorm>) :
         holder.tvPrice.text       = "₱ ${dorm.price}/month"
         holder.tvDeposit.text     = "Deposit: ₱${dorm.deposit ?: "N/A"}"
         holder.tvAdvance.text     = "Advance: ₱${dorm.advance ?: "N/A"}"
+
+        holder.btnReserve.text = if (isFull) "Dorm Full" else "Reserve"
 
         // Utilities
         val u = dorm.utilities
@@ -135,6 +141,12 @@ class DormAdapter(private val dorms: List<Dorm>) :
         // Reserve
         holder.btnReserve.setOnClickListener {
             val context = holder.itemView.context
+
+            if (availableBeds <= 0) {
+                showDormFullDialog(context)
+                return@setOnClickListener
+            }
+
             val intent = Intent(context, ReservationActivity::class.java).apply {
                 putExtra("DORM_NAME",      dorm.dormName)
                 putExtra("DORM_OWNER_ID",  dorm.ownerId ?: 0)
@@ -145,6 +157,29 @@ class DormAdapter(private val dorms: List<Dorm>) :
             }
             context.startActivity(intent)
         }
+    }
+
+    private fun showDormFullDialog(context: Context) {
+        AlertDialog.Builder(context)
+            .setTitle("Dorm No Longer Accepting Tenants")
+            .setMessage(
+                "This dorm is no longer accepting a tenant. " +
+                    "You will be taken back to available dorms so you can browse a different dorm."
+            )
+            .setCancelable(false)
+            .setPositiveButton("Browse Dorms") { _, _ ->
+                goToAvailableDorms(context)
+            }
+            .show()
+    }
+
+    private fun goToAvailableDorms(context: Context) {
+        if (context is DashboardActivity) return
+
+        val intent = Intent(context, DashboardActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        context.startActivity(intent)
     }
 
     private fun loadImage(holder: DormViewHolder, photoUrls: List<String>, index: Int) {

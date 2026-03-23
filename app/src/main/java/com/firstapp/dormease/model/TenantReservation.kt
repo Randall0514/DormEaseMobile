@@ -33,5 +33,6 @@ data class TenantReservation(
     val tenant_email        : String?,
     // ── Appeal fields (set after tenant submits an appeal) ────────────────────
     val appeal_message      : String?,
-    val appeal_submitted_at : String?
+    val appeal_submitted_at : String?,
+    val appeal_dismissed_at : String?
 )

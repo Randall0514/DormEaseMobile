@@ -82,37 +82,27 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val rawPhone = sessionManager.getPhone().trim()
-        val userId   = sessionManager.getUserId()
-
-        Log.d("MainActivity", "routeLoggedInUser: phone='$rawPhone' userId=$userId")
+        val userId = sessionManager.getUserId()
+        Log.d("MainActivity", "routeLoggedInUser: userId=$userId")
 
         scope.launch {
             try {
                 val api = RetrofitClient.getApiService(applicationContext)
 
-                val reservations = when {
-                    rawPhone.isNotBlank() -> {
-                        val digits = rawPhone.filter { it.isDigit() }.takeLast(10)
-                        val resp   = api.getTenantReservations("+63$digits")
-                        if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+                val resp = api.getMyReservations()
+                val reservations = if (resp.isSuccessful) {
+                    val list = resp.body() ?: emptyList()
+                    list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
+                        val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
+                        if (digits.isNotBlank()) {
+                            sessionManager.savePhone("+63$digits")
+                            getSharedPreferences("NotificationState", MODE_PRIVATE)
+                                .edit().putString("last_phone", digits).apply()
+                        }
                     }
-                    userId > 0 -> {
-                        val resp = api.getMyReservations()
-                        if (resp.isSuccessful) {
-                            val list = resp.body() ?: emptyList()
-                            list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
-                                val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
-                                if (digits.isNotBlank()) {
-                                    sessionManager.savePhone("+63$digits")
-                                    getSharedPreferences("NotificationState", MODE_PRIVATE)
-                                        .edit().putString("last_phone", digits).apply()
-                                }
-                            }
-                            list
-                        } else emptyList()
-                    }
-                    else -> emptyList()
+                    list
+                } else {
+                    emptyList()
                 }
 
                 Log.d("MainActivity", "Got ${reservations.size} reservations")
@@ -120,20 +110,27 @@ class MainActivity : AppCompatActivity() {
                     Log.d("MainActivity", "  id=${it.id} status=${it.status} tenant_action=${it.tenant_action}")
                 }
 
+                val hasActiveReservation = reservations.any {
+                    (it.status == "approved" || it.status == "pending") && it.tenant_action != "cancelled"
+                }
+
                 // ── Termination check BEFORE deciding route ───────────────────
                 val isTerminated = reservations.isNotEmpty() &&
-                        reservations.none { it.status == "approved" || it.status == "pending" } &&
+                        !hasActiveReservation &&
                         reservations.any  { it.status == "archived" }
+
+                val archivedReservation = reservations.firstOrNull { it.status == "archived" }
 
                 if (isTerminated) {
                     Log.d("MainActivity", "Terminated — calling markTerminated()")
-                    sessionManager.markTerminated()
+                    sessionManager.markTerminated(
+                        archivedReservation?.dorm_name,
+                        archivedReservation?.termination_reason
+                    )
                 }
 
                 // Only approved or pending = active
-                val hasApprovedOrPending = reservations.any {
-                    it.status == "approved" || it.status == "pending"
-                }
+                val hasApprovedOrPending = hasActiveReservation
 
                 withContext(Dispatchers.Main) {
                     if (hasApprovedOrPending) {

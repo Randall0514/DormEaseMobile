@@ -535,7 +535,7 @@
                         android:orientation="horizontal">
                         <CheckBox android:id="@+id/cbRestroom" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Restroom" android:textColor="#333333" android:enabled="false" android:buttonTint="#2979FF" />
                         <CheckBox android:id="@+id/cbNoCurfew" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="No Curfew" android:textColor="#333333" android:enabled="false" android:buttonTint="#2979FF" />
-                        <CheckBox android:id="@+id/cbVisitors" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Visitors OK" android:textColor="#333333" android:enabled="false" android:buttonTint="#2979FF" />
+                        <CheckBox android:id="@+id/cbVisitors" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Visitors" android:textColor="#333333" android:enabled="false" android:buttonTint="#2979FF" />
                     </LinearLayout>
 
                 </LinearLayout>
@@ -556,7 +556,8 @@
         <Button
             android:id="@+id/btnMessage"
             android:layout_width="0dp"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:text="Message"
@@ -572,14 +573,19 @@
         <Button
             android:id="@+id/btnReserve"
             android:layout_width="0dp"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_weight="1"
             android:drawableStart="@drawable/ic_calendar"
             android:drawablePadding="6dp"
             android:text="Reserve"
+            android:textAllCaps="false"
             android:textColor="@android:color/white"
             android:textSize="15sp"
             android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:gravity="center"
             android:backgroundTint="#2979FF"
             app:cornerRadius="12dp" />
 

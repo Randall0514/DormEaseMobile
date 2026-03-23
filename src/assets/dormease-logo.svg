@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="DormEase logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eaf2ff" />
+      <stop offset="100%" stop-color="#d8e7ff" />
+    </linearGradient>
+  </defs>
+
+  <circle cx="128" cy="128" r="124" fill="url(#bg)" stroke="#3c78e8" stroke-width="4" />
+
+  <path d="M40 112L128 40l88 72" fill="none" stroke="#3c78e8" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" />
+
+  <rect x="56" y="108" width="10" height="78" rx="5" fill="#3c78e8" />
+  <rect x="190" y="108" width="10" height="78" rx="5" fill="#3c78e8" />
+
+  <rect x="78" y="142" width="100" height="12" rx="6" fill="#334155" />
+  <rect x="78" y="136" width="14" height="52" rx="4" fill="#334155" />
+  <rect x="164" y="136" width="14" height="52" rx="4" fill="#334155" />
+
+  <rect x="96" y="150" width="56" height="20" rx="10" fill="#6fcfda" />
+  <circle cx="90" cy="160" r="8" fill="#ffd9c2" />
+
+  <path d="M127 92c3-5 9-7 14-4 5 3 7 10 4 15-5 8-18 15-18 15s-13-7-18-15c-3-5-1-12 4-15 5-3 11-1 14 4z" fill="#5f9cf7" />
+
+  <path d="M174 58h20v20" fill="none" stroke="#3c78e8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

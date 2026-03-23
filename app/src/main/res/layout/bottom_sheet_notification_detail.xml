@@ -141,9 +141,10 @@
         android:visibility="gone"
         android:layout_marginBottom="10dp">
         <TextView
+            android:id="@+id/tvSheetReasonLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Rejection Reason"
+            android:text="Reason"
             android:textSize="13sp"
             android:textColor="#7799CC"
             android:textStyle="bold"

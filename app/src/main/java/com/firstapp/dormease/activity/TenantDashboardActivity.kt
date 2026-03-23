@@ -3,6 +3,7 @@ package com.firstapp.dormease.activity
 // FILE PATH: app/src/main/java/com/firstapp/dormease/activity/TenantDashboardActivity.kt
 
 import android.content.Intent
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -13,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import com.firstapp.dormease.DashboardActivity
@@ -50,6 +52,10 @@ class TenantDashboardActivity : AppCompatActivity() {
     private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
 
+    private val readPrefs by lazy {
+        getSharedPreferences("NotifReadState", Context.MODE_PRIVATE)
+    }
+
     private var lastReservation: TenantReservation? = null
     private var terminationDialogShowing = false
 
@@ -80,6 +86,22 @@ class TenantDashboardActivity : AppCompatActivity() {
         }
     }
 
+    private val notifLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val hasUnread = result.data?.getBooleanExtra("has_unread", false) ?: false
+            val allRead = result.data?.getBooleanExtra("all_read", false) ?: false
+            if (!hasUnread || allRead) {
+                updateBadge(0)
+            } else {
+                fetchNotificationCount()
+            }
+        } else {
+            fetchNotificationCount()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tenant_dashboard)
@@ -91,7 +113,7 @@ class TenantDashboardActivity : AppCompatActivity() {
         setupBottomNav()
 
         findViewById<FrameLayout>(R.id.notificationBellContainer).setOnClickListener {
-            startActivity(Intent(this, NotificationsActivity::class.java).apply {
+            notifLauncher.launch(Intent(this, NotificationsActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             })
         }
@@ -156,16 +178,28 @@ class TenantDashboardActivity : AppCompatActivity() {
     }
 
     private fun fetchNotificationCount() {
-        val rawPhone = sessionManager.getPhone().trim()
-        if (rawPhone.isBlank()) { updateBadge(0); return }
-        val phoneParam = "+63${rawPhone.filter { it.isDigit() }.takeLast(10)}"
         scope.launch {
             try {
                 val response = RetrofitClient.getApiService(applicationContext)
-                    .getTenantReservations(phoneParam)
-                val count = if (response.isSuccessful)
-                    response.body()?.count { it.status == "approved" || it.status == "rejected" } ?: 0
-                else 0
+                    .getMyReservations()
+                val count = if (response.isSuccessful) {
+                    val list = response.body() ?: emptyList()
+                    list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
+                        val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
+                        if (digits.isNotBlank()) sessionManager.savePhone("+63$digits")
+                    }
+                    list.count { r ->
+                        val markedRead = readPrefs.getBoolean("read_${r.id}", false)
+                        if (markedRead) return@count false
+                        when (r.status) {
+                            "approved" -> r.tenant_action.isNullOrBlank()
+                            "rejected", "archived" -> true
+                            else -> false
+                        }
+                    }
+                } else {
+                    0
+                }
                 withContext(Dispatchers.Main) { updateBadge(count) }
             } catch (e: Exception) {
                 Log.w("TenantDashboard", "Badge fetch failed: ${e.message}")
@@ -179,25 +213,7 @@ class TenantDashboardActivity : AppCompatActivity() {
     }
 
     private fun loadReservation() {
-        val rawPhone = sessionManager.getPhone().trim()
-        val userId   = sessionManager.getUserId()
-        when {
-            rawPhone.isNotBlank() -> {
-                fetchByPhone("+63${rawPhone.filter { it.isDigit() }.takeLast(10)}")
-            }
-            userId > 0 -> fetchByUserId()
-            else -> {
-                val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
-                val lastPhone  = (notifPrefs.getString("last_phone", "") ?: "").trim()
-                if (lastPhone.isNotBlank()) {
-                    val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
-                    sessionManager.savePhone("+63$digits")
-                    fetchByPhone("+63$digits")
-                } else if (lastReservation == null) {
-                    showState(State.NO_RESERVATION)
-                }
-            }
-        }
+        fetchByUserId()
     }
 
     private fun fetchByPhone(phoneParam: String) {
@@ -318,7 +334,7 @@ class TenantDashboardActivity : AppCompatActivity() {
                 dialog.dismiss()
                 terminationDialogShowing = false
                 lastReservation = null
-                sessionManager.markTerminated()
+                sessionManager.markTerminated(dormName, reason)
                 startActivity(Intent(this, DashboardActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 })

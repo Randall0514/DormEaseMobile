@@ -21,7 +21,8 @@ object HomeRouter {
         context: Context,
         scope: CoroutineScope,
         session: SessionManager,
-        onStart: (() -> Unit)? = null
+            onStart: (() -> Unit)? = null,
+            intentFlags: Int = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
     ) {
         onStart?.invoke()
 
@@ -31,81 +32,34 @@ object HomeRouter {
             Log.d(TAG, "navigate: isTerminated flag set — going to DashboardActivity immediately")
             context.startActivity(
                 Intent(context, DashboardActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        flags = intentFlags
                 }
             )
             return
         }
 
-        val rawPhone = session.getPhone().trim()
-        val userId   = session.getUserId()
-
         scope.launch {
             try {
                 val api = RetrofitClient.getApiService(context)
 
-                // ── Resolve the best phone to query with ─────────────────────
-                // FIX: We only use NotificationState last_phone as a fallback.
-                // The presence of a phone number alone is NOT enough to route to
-                // TenantDashboard — we MUST verify against actual server reservations.
-                val resolvedPhone: String = when {
-                    rawPhone.isNotBlank() -> {
-                        rawPhone.filter { it.isDigit() }.takeLast(10)
+                val resp = api.getMyReservations()
+                val reservations = if (resp.isSuccessful) {
+                    val list = resp.body() ?: emptyList()
+                    val hasActive = list.any { r ->
+                        r.status == "approved" || r.status == "pending"
                     }
-                    else -> {
-                        // Fallback: check NotificationState for last_phone.
-                        // This is only set when a real reservation was confirmed, so it's safe.
-                        val notifPrefs = context.getSharedPreferences("NotificationState", Context.MODE_PRIVATE)
-                        val lastPhone  = notifPrefs.getString("last_phone", "") ?: ""
-                        lastPhone.filter { it.isDigit() }.takeLast(10)
+                    if (hasActive) {
+                        list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
+                            val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
+                            if (digits.isNotBlank()) {
+                                session.savePhone("+63$digits")
+                                Log.d(TAG, "navigate: saved phone from token lookup: +63$digits")
+                            }
+                        }
                     }
-                }
-
-                val reservations = when {
-                    resolvedPhone.isNotBlank() -> {
-                        val resp = api.getTenantReservations("+63$resolvedPhone")
-                        if (resp.isSuccessful) {
-                            val list = resp.body() ?: emptyList()
-                            // Sync phone back into SessionManager ONLY if there are active reservations
-                            val hasActive = list.any { r ->
-                                r.status == "approved" || r.status == "pending"
-                            }
-                            if (rawPhone.isBlank() && hasActive) {
-                                val serverPhone = list.firstOrNull { it.phone.isNotBlank() }?.phone
-                                if (!serverPhone.isNullOrBlank()) {
-                                    val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
-                                    if (digits.isNotBlank()) {
-                                        // savePhone() writes to NotificationState too — safe here
-                                        // because we just confirmed an active reservation exists.
-                                        session.savePhone("+63$digits")
-                                        Log.d(TAG, "navigate: synced phone from server: +63$digits")
-                                    }
-                                }
-                            }
-                            list
-                        } else emptyList()
-                    }
-                    userId > 0 -> {
-                        val resp = api.getMyReservations()
-                        if (resp.isSuccessful) {
-                            val list = resp.body() ?: emptyList()
-                            // Save phone ONLY if there is an active reservation
-                            val hasActive = list.any { r ->
-                                r.status == "approved" || r.status == "pending"
-                            }
-                            if (hasActive) {
-                                list.firstOrNull { it.phone.isNotBlank() }?.phone?.let { serverPhone ->
-                                    val digits = serverPhone.filter { it.isDigit() }.takeLast(10)
-                                    if (digits.isNotBlank()) {
-                                        session.savePhone("+63$digits")
-                                        Log.d(TAG, "navigate: saved phone from userId lookup: +63$digits")
-                                    }
-                                }
-                            }
-                            list
-                        } else emptyList()
-                    }
-                    else -> emptyList()
+                    list
+                } else {
+                    emptyList()
                 }
 
                 // ── Determine if tenant has an active reservation ─────────────
@@ -123,9 +77,14 @@ object HomeRouter {
                         !hasActive &&
                         reservations.any { it.status == "archived" }
 
+                val archivedReservation = reservations.firstOrNull { it.status == "archived" }
+
                 if (isTerminated) {
                     Log.d(TAG, "navigate: terminated — calling markTerminated()")
-                    session.markTerminated()
+                    session.markTerminated(
+                        archivedReservation?.dorm_name,
+                        archivedReservation?.termination_reason
+                    )
                 }
 
                 Log.d(TAG, "navigate: total=${reservations.size} hasActive=$hasActive isTerminated=$isTerminated")
@@ -135,15 +94,13 @@ object HomeRouter {
                     else           DashboardActivity::class.java
                     context.startActivity(
                         Intent(context, target).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                flags = intentFlags
                         }
                     )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "navigate error: ${e.message}")
-                // On network error: ALWAYS fall back to DashboardActivity unless
-                // NotificationState last_phone exists (meaning a real prior reservation was seen).
-                // Do NOT use raw session phone alone — the user might have just typed it in Personal Info.
+                // On network error: fall back to prior verified reservation hint in NotificationState.
                 withContext(Dispatchers.Main) {
                     val target = when {
                         session.isTerminated() -> DashboardActivity::class.java
@@ -157,7 +114,7 @@ object HomeRouter {
                     }
                     context.startActivity(
                         Intent(context, target).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                flags = intentFlags
                         }
                     )
                 }

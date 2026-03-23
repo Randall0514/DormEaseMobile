@@ -11,5 +11,6 @@ data class UserData(
     val fullName: String? = null,   // maps to fullName from backend
     val username: String? = null,
     val email: String? = null,
+    val phoneNumber: String? = null,
     val platform: String? = null
 )

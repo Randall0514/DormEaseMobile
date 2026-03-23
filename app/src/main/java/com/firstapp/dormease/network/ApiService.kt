@@ -34,6 +34,18 @@ interface ApiService {
         @Body body: Map<String, String>
     ): Response<ResponseBody>
 
+    /** Forgot password — request an OTP to the given email */
+    @POST("auth/forgot-password")
+    suspend fun requestPasswordReset(
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
+    /** Reset password — verify OTP and set new password */
+    @POST("auth/reset-password")
+    suspend fun resetPassword(
+        @Body body: Map<String, String>
+    ): Response<ResponseBody>
+
     @POST("auth/signup")
     fun signup(@Body request: SignupRequest): Call<ApiResponse>
 

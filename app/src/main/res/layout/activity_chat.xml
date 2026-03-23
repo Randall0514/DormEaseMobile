@@ -5,16 +5,22 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/gradient_background">
+    android:background="@drawable/bg_chat_screen"
+    android:fitsSystemWindows="true">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:minHeight="72dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="12dp"
-        android:background="#1A2C45">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="@drawable/bg_chat_header"
+        android:elevation="6dp">
 
         <!-- Back button -->
         <ImageButton
@@ -29,14 +35,14 @@
         <!-- Avatar circle -->
         <TextView
             android:id="@+id/tvChatAvatar"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="10dp"
             android:gravity="center"
-            android:textSize="18sp"
+            android:textSize="16sp"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:background="@drawable/circle_avatar_bg"
+            android:background="@drawable/bg_chat_avatar_header"
             android:text="?"/>
 
         <!-- Name + status — takes remaining space -->
@@ -45,7 +51,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="10dp">
+            android:layout_marginStart="12dp">
 
             <TextView
                 android:id="@+id/tvChatName"
@@ -56,13 +62,28 @@
                 android:textColor="#FFFFFF"
                 android:textStyle="bold"/>
 
-            <TextView
-                android:id="@+id/tvChatStatus"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Active now"
-                android:textSize="12sp"
-                android:textColor="#B0CCEE"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="3dp">
+
+                <View
+                    android:id="@+id/vChatStatusDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/bg_chat_status_dot" />
+
+                <TextView
+                    android:id="@+id/tvChatStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Online"
+                    android:textSize="12sp"
+                    android:layout_marginStart="6dp"
+                    android:textColor="#BFD0E4"/>
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Delete conversation button (trash icon, top-right) -->
@@ -72,7 +93,7 @@
             android:layout_height="40dp"
             android:src="@drawable/ic_delete"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:tint="#FF6B6B"
+            android:tint="#F28F87"
             android:contentDescription="Delete conversation"
             android:layout_marginStart="4dp"/>
 
@@ -86,7 +107,7 @@
         android:layout_weight="1"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:paddingTop="8dp"
+        android:paddingTop="14dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false"
         android:scrollbars="none"/>
@@ -97,33 +118,36 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="10dp"
-        android:background="#FFFFFF"
-        android:elevation="4dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="12dp"
+        android:background="@drawable/bg_chat_input_bar"
+        android:elevation="10dp">
 
         <EditText
             android:id="@+id/etMessage"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="46dp"
             android:layout_weight="1"
-            android:hint="Type a message…"
+            android:hint="Type a message"
             android:textSize="14sp"
-            android:textColorHint="#AAAAAA"
-            android:textColor="#111111"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:background="@drawable/bg_message_input"
+            android:textColorHint="#8A97A8"
+            android:textColor="#1C2A3A"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@drawable/bg_chat_input_field"
             android:imeOptions="actionSend"
             android:inputType="textMultiLine"
-            android:maxLines="3"/>
+            android:maxLines="4"/>
 
         <ImageButton
             android:id="@+id/btnSend"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="10dp"
             android:src="@drawable/ic_send"
-            android:background="@drawable/circle_send_btn"
+            android:background="@drawable/bg_chat_send_selector"
             android:tint="#FFFFFF"
             android:contentDescription="Send"/>
     </LinearLayout>

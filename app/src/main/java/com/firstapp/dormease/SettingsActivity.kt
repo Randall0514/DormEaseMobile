@@ -13,7 +13,7 @@ import com.firstapp.dormease.activity.ChangeEmailActivity
 import com.firstapp.dormease.activity.ChangePasswordActivity
 import com.firstapp.dormease.activity.ContactUsActivity
 import com.firstapp.dormease.activity.HelpCenterActivity
-import com.firstapp.dormease.activity.TenantDashboardActivity
+import com.firstapp.dormease.utils.HomeRouter
 import com.firstapp.dormease.utils.NavBadgeHelper
 import com.firstapp.dormease.utils.SessionManager
 import kotlinx.coroutines.CoroutineScope
@@ -85,26 +85,11 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun navigateHome() {
-        val target = resolveHomeTarget()
-        startActivity(Intent(this, target).apply {
-            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        })
-    }
-
-    private fun resolveHomeTarget(): Class<*> {
-        if (session.isTerminated()) return DashboardActivity::class.java
-
-        val phone = session.getPhone().trim()
-        if (phone.isNotBlank()) return TenantDashboardActivity::class.java
-
-        val notifPrefs = getSharedPreferences("NotificationState", MODE_PRIVATE)
-        val lastPhone  = (notifPrefs.getString("last_phone", "") ?: "").trim()
-        if (lastPhone.isNotBlank()) {
-            val digits = lastPhone.filter { it.isDigit() }.takeLast(10)
-            if (digits.isNotBlank()) session.savePhone("+63$digits")
-            return TenantDashboardActivity::class.java
-        }
-
-        return DashboardActivity::class.java
+        HomeRouter.navigate(
+            context = this,
+            scope = scope,
+            session = session,
+            intentFlags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        )
     }
 }

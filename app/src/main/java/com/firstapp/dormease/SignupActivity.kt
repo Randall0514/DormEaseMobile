@@ -4,10 +4,12 @@ package com.firstapp.dormease
 
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputFilter
 import android.text.InputType
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextWatcher
+import android.text.method.DigitsKeyListener
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
@@ -100,6 +102,10 @@ class SignupActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) { validatePasswordRequirements(s.toString()) }
         })
 
+        // Mobile number input: digits only, max 10 chars (format: 9XXXXXXXXX)
+        etPhone.keyListener = DigitsKeyListener.getInstance("0123456789")
+        etPhone.filters = arrayOf(InputFilter.LengthFilter(10))
+
         // Clear errors on focus
         listOf(tilFullName, tilUsername, tilEmail, tilPhone, tilPassword, tilConfirmPassword).forEach { til ->
             til.editText?.setOnFocusChangeListener { _, hasFocus ->
@@ -128,11 +134,12 @@ class SignupActivity : AppCompatActivity() {
             } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                 tilEmail.isErrorEnabled = true; tilEmail.error = "Please enter a valid email"; isValid = false
             }
-            // Phone: required, must be exactly 10 digits (local PH format: 9XXXXXXXXX)
-            val phoneDigits = rawPhone.filter { it.isDigit() }
+            // Phone: required, digits only, and must be 9XXXXXXXXX
             if (rawPhone.isEmpty()) {
                 tilPhone.isErrorEnabled = true; tilPhone.error = "Mobile number is required"; isValid = false
-            } else if (phoneDigits.length != 10 || !phoneDigits.startsWith("9")) {
+            } else if (!rawPhone.matches(Regex("^\\d+$"))) {
+                tilPhone.isErrorEnabled = true; tilPhone.error = "Mobile number must contain digits only"; isValid = false
+            } else if (!rawPhone.matches(Regex("^9\\d{9}$"))) {
                 tilPhone.isErrorEnabled = true; tilPhone.error = "Enter a valid 10-digit number starting with 9"; isValid = false
             }
             if (password.isEmpty()) {
@@ -161,7 +168,7 @@ class SignupActivity : AppCompatActivity() {
             pendingFullName = fullName
             pendingUsername = username
             pendingEmail    = email
-            pendingPhone    = "+63$phoneDigits"
+            pendingPhone    = "+63$rawPhone"
             pendingPassword = password
 
             btnSignup.isEnabled = false
